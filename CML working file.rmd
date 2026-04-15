@@ -1,0 +1,57 @@
+---
+  title: "Machine Learning assignment"
+author: "Thomas Sertijn, Bart Smets, Ilja Van Bever"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(hdm)
+library(grf)
+library(dplyr)
+library(tidyr)
+library(knitr)
+#load data
+data(pension)
+```
+
+```{r, echo = FALSE}
+#1a)
+
+vars <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
+          "marr", "twoearn", "db", "pira", "hown")
+
+
+Y <- pension$net_tfa
+W <- pension$e401
+X <- pension[, c("age", "inc", "fsize", "educ", 
+                                 "marr", "twoearn", "db", "pira", "hown")]
+#train causal forest
+cf <- causal_forest(X = X, Y = Y, W = W)
+# Extract CATE 
+pension$CATE <- predict(cf)$predictions
+
+hist(pension$CATE)
+
+#1b)
+#Very preliminary explanation, but I hope this is the vague idea
+
+#Depends on the variable? If it's a confounder it is necessary (otherwise the variables look falsely correlated).
+# If it's a variable only having on effect on Y, it doesn' matter that much, but still best to do it to reduce noise (I think this was non-collapsability, right?).
+# If it's a mediator, don't condition as your effect might go through your mediator and you might miss it this way.
+# If it's a collider, definetely don't condition on it as it opens the path, creating a false association.
+# Probably expects us to discuss this for the specific covariates.
+# To do: create DAG
+```
+
+```{r, echo = FALSE}
+#Q2
+```
+
+```{r, echo = FALSE}
+#Q3
+```
+
+```{r, echo = FALSE}
+#Q4
+```
