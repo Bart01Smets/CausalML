@@ -16,9 +16,10 @@ data(pension)
 ```
 
 ```{r, echo = FALSE}
+#Q1
 #1a)
 
-vars <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
+variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
 
 
@@ -27,11 +28,13 @@ W <- pension$e401
 X <- pension[, c("age", "inc", "fsize", "educ", 
                                  "marr", "twoearn", "db", "pira", "hown")]
 #train causal forest
-cf <- causal_forest(X = X, Y = Y, W = W)
+causal_forest <- causal_forest(X = X, Y = Y, W = W)
 # Extract CATE 
-pension$CATE <- predict(cf)$predictions
+pension$CATE <- predict(causal_forest)$predictions
 
 hist(pension$CATE)
+
+#Interpretation CATE histogram: The curve is clearly skewed to the right, implying that most individuals benefited from participation in 401(k) in terms of accumulated assets.
 
 #1b)
 #Very preliminary explanation, but I hope this is the vague idea
@@ -46,10 +49,58 @@ hist(pension$CATE)
 
 ```{r, echo = FALSE}
 #Q2
+pension$quartiles <- ntile(pension$CATE, 4)
+
+# Just run the function explicitly for each quartile
+Q1_ATE <- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 1))
+Q2_ATE<- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 2))
+Q3_ATE <- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 3))
+Q4_ATE <- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 4))
+
+
+coef_1  <- Q1_ATE["estimate"]
+sd_1   <- Q1_ATE["std.err"]
+
+Low_CI_1  <- coef_2 - (1.96 * sd_1)
+High_CI_1 <- coef_2 + (1.96 * sd_1)
+
+coef_2  <- Q2_ATE["estimate"]
+sd_2   <- Q2_ATE["std.err"]
+
+Low_CI_2  <- coef_2 - (1.96 * sd_2)
+High_CI_2 <- coef_2 + (1.96 * sd_2)
+
+coef_3  <- Q3_ATE["estimate"]
+sd_3   <- Q3_ATE["std.err"]
+
+Low_CI_3  <- coef_3 - (1.96 * sd_3)
+High_CI_3 <- coef_3 + (1.96 * sd_3)
+
+coef_4  <- Q4_ATE["estimate"]
+sd_4   <- Q4_ATE["std.err"]
+
+Low_CI_4  <- coef_4 - (1.96 * sd_4)
+High_CI_4 <- coef_4 + (1.96 * sd_4)
+
 ```
 
 ```{r, echo = FALSE}
 #Q3
+#get CATE predictions (E(Y1-Y0)/L)
+pension$CATE
+#prop score (P(A=1/L))
+prop_score<-causal_forest$W.hat
+
+print(causal_forest)
+#E(Y/L)
+var<-causal_forest$Y.hat
+
+#Get actual average treatment effect (E(Y1-Y0))
+ate<-average_treatment_effect(causal_forest)
+
+#E(Y/A,L) nu nog krijgen (maar hoe), dan is het gewoon invullen in die lange EIF formule en kom je er dus wel
+
+
 ```
 
 ```{r, echo = FALSE}
