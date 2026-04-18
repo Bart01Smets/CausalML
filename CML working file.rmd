@@ -1,8 +1,10 @@
 ---
-  title: "Machine Learning assignment"
+title: "Causal Machine Learning assignment"
 author: "Thomas Sertijn, Bart Smets, Ilja Van Bever"
 date: "`r Sys.Date()`"
 output: pdf_document
+header-includes:
+  - \usepackage{tikz}
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -13,6 +15,9 @@ library(tidyr)
 library(knitr)
 #load data
 data(pension)
+library(ggdag)
+library(ggplot2)
+
 ```
 
 ```{r, echo = FALSE}
@@ -47,22 +52,40 @@ hist(pension$CATE)
 # To do: create DAG
 ```
 
+
+## Collider DAG example
+\begin{center}
+\textbf{Collider} \\
+\vspace{0.5cm}
+\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
+    % Nodes
+    \node (A) at (0,2) {Eligibility (A)};
+    \node (Y) at (6,2) {Net Assets (Y)};
+    \node (Z) at (3,0) { (Collider)};
+
+    % Edges
+    \draw[->] (A) -- (Y);
+    \draw[->] (A) -- (Z);
+    \draw[->] (Y) -- (Z);
+\end{tikzpicture}
+\end{center}
+
 ```{r, echo = FALSE}
 #Q2
 pension$quartiles <- ntile(pension$CATE, 4)
 
 # Just run the function explicitly for each quartile
-Q1_ATE <- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 1))
-Q2_ATE<- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 2))
-Q3_ATE <- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 3))
-Q4_ATE <- average_treatment_effect(causal_forest, subset = (pension_clean$quartiles == 4))
+Q1_ATE <- average_treatment_effect(causal_forest, subset = (pension$quartiles == 1))
+Q2_ATE<- average_treatment_effect(causal_forest, subset = (pension$quartiles == 2))
+Q3_ATE <- average_treatment_effect(causal_forest, subset = (pension$quartiles == 3))
+Q4_ATE <- average_treatment_effect(causal_forest, subset = (pension$quartiles == 4))
 
 
 coef_1  <- Q1_ATE["estimate"]
 sd_1   <- Q1_ATE["std.err"]
 
-Low_CI_1  <- coef_2 - (1.96 * sd_1)
-High_CI_1 <- coef_2 + (1.96 * sd_1)
+Low_CI_1  <- coef_1 - (1.96 * sd_1)
+High_CI_1 <- coef_1 + (1.96 * sd_1)
 
 coef_2  <- Q2_ATE["estimate"]
 sd_2   <- Q2_ATE["std.err"]
@@ -81,6 +104,10 @@ sd_4   <- Q4_ATE["std.err"]
 
 Low_CI_4  <- coef_4 - (1.96 * sd_4)
 High_CI_4 <- coef_4 + (1.96 * sd_4)
+
+coef_4
+Low_CI_4
+High_CI_4
 
 ```
 
