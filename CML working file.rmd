@@ -39,7 +39,7 @@ pension$CATE <- predict(causal_forest)$predictions
 
 hist(pension$CATE)
 
-#Interpretation CATE histogram: The curve is clearly skewed to the right, implying that most individuals benefited from participation in 401(k) in terms of accumulated assets.
+#Interpretation CATE histogram: The curve is clearly skewed to the right, implying that most individuals benefited from participation in 401(k) in terms of accumulated assets. Also a pretty wide spread so clearly heterogeneity in treatment effects
 
 #1b)
 #Very preliminary explanation, but I hope this is the vague idea
