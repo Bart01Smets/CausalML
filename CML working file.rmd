@@ -123,9 +123,39 @@ print(causal_forest)
 var<-causal_forest$Y.hat
 
 #Get actual average treatment effect (E(Y1-Y0))
-ate<-average_treatment_effect(causal_forest)
+average_treatment_effect<-average_treatment_effect(causal_forest)["estimate"]
+################################
+#E(Y/A,L) nu nog krijgen (maar hoe)
 
-#E(Y/A,L) nu nog krijgen (maar hoe), dan is het gewoon invullen in die lange EIF formule en kom je er dus wel
+xx<-
+###################################
+#dan is het gewoon invullen in die lange EIF formule en kom je er dus wel
+
+
+#Dit is die eerste term uit de fmle
+term1<-(pension$CATE-average_treatment_effect)^2
+
+#weight term, die meest rechtse term uit de fmle
+term2<-(W/prop_score)- ((1-W)/(1-prop_score))
+
+#Laatste term uit de fmle, residual
+term3<-(Y-xx)
+  
+#combine
+  
+formula<-term1+2*(pension$CATE-average_treatment_effect)*term2*term3
+#estimate sigma^2
+sigma_sq_est<-mean(formula)
+
+#get standard error
+ss<-length(formula)
+sigma_sq_se<- sd(formula)/sqrt(ss)
+#get CI
+high_ci<sigma_sq_est-+1.96*sigma_sq_se
+low_ci<-sigma_sq_est-1.96*sigma_sq_se
+
+
+
 
 
 ```
