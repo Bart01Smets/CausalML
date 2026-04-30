@@ -61,43 +61,32 @@ First, it is important to note that adding variables to non-linear models genera
 In addition, including variables in an analysis can have different effects depending on their position in the causal diagram.
 
 - *Collider*  
-  In the case of a collider  
-  *(Income → Collider ← Outcome)*,  
-  conditioning on this variable introduces collider bias.  
+  In the case of a collider *(Income → Collider ← Outcome)*, conditioning on this variable introduces collider bias.  
   Conditioning on a collider opens a backdoor pathway, making the estimated effect of income biased and very difficult to interpret.
 
 - *Mediator*  
-  In the case of a mediator  
-  *(Income → Mediator → Outcome)*,  
-  part of the effect of income is captured through an indirect effect (via the mediator), and part through a direct effect (the effect observed directly).  
+  In the case of a mediator *(Income → Mediator → Outcome)*, part of the effect of income is captured through an indirect effect (via the mediator), and part through a direct effect (the effect observed directly).  
   Including a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect, but only the direct effect.
 
-- *Common Cause (Confounder)* 
-  In the case of a common cause  
-  *(Income ← Common Cause → Outcome)*,  
-  it is appropriate to include this variable in the analysis.  
-  If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of income not credible.  
-  We note that conditional exchangeability given only income does not hold if there exist common causes of income and the outcome that are not controlled for.
+- *Common Cause*  
+  In the case of a common cause *(Income ← Common Cause → Outcome)*, it is appropriate to include this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of income not credible. We note that conditional exchangeability given only income does not hold if there exist common causes of income and the outcome that are not controlled for.
 
 - *Variable Affecting Only Income*  
   If a variable only affects income, including it in the analysis does not introduce bias.  
   However, it may still influence the estimated effect of income due to non-collapsibility in non-linear models and influence the precision of the estimation.
 
-- *Variable Affecting Only the Outcome*
+- *Variable Affecting Only the Outcome*  
   If a variable only affects the outcome and not income, it can be included in the analysis.  
   Including such variables may improve the efficiency of the estimation.
 
 ## Examples
 
-- *Age*  
-  Age could potentially be a *common cause*.  
+- *Age* could potentially be a *common cause*.  
   Older individuals tend to earn more and may also be more likely to participate in a 401(k) program.
 
-- *Family Size* 
-  Family size could act as a *mediator*, as it may influence the likelihood of participating in a 401(k) program while also being affected by income.
+- *Family Size* could act as a *mediator*, as it may influence the likelihood of participating in a 401(k) program while also being affected by income.
 
-- *Years of Education*  
-  Years of education could be a *common cause*.  
+- *Years of Education* could be a *common cause*.  
   The more education an individual has, the higher their income tends to be, and the more likely they may be to participate in a 401(k) program.
 
 ## Collider DAG example
