@@ -38,8 +38,10 @@ Y <- pension$net_tfa
 W <- pension$e401
 X <- pension[, c("age", "inc", "fsize", "educ", 
                                  "marr", "twoearn", "db", "pira", "hown")]
+XW <- pension[, c("e401", "age", "inc", "fsize", "educ", 
+                                 "marr", "twoearn", "db", "pira", "hown")]
 
-K = 2 # set to 5!
+K = 5 # set to 5!
 n = nrow(X)
 folds = sample(rep(1:K, length.out = n))
 
@@ -71,15 +73,18 @@ causal_forest <- causal_forest(X = X, Y = Y, W = W,
 
 # Extract CATE 
 pension$CATE <- predict(causal_forest)$predictions
-
-hist(pension$CATE)
-hist(Y_hat)
-hist(A_hat)
 ```
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE")
 hist(Y_hat, main = "Expected responses")
 hist(A_hat, main = "Propensity scores")
+```
+```{r, echo = FALSE}
+saveRDS(causal_forest, file = "causal_forest_model_ex1.rds")
+```
+
+```{r, echo = FALSE}
+causal_forest2 <- readRDS("causal_forest_model_ex1.rds")
 ```
 
 ```{r, echo = FALSE}
@@ -210,19 +215,20 @@ High_CI_4
 #Q3
 #get CATE predictions (E(Y1-Y0)/L)
 pension$CATE
-#prop score (P(A=1/L))
+#prop score (P(A=1/L)) # crossfitted version van hierboven?
 prop_score<-causal_forest$W.hat
 
 print(causal_forest)
-#E(Y/L)
+#E(Y/L) # crossfitted version van hierboven?
 var<-causal_forest$Y.hat
 
 #Get actual average treatment effect (E(Y1-Y0))
 average_treatment_effect<-average_treatment_effect(causal_forest)["estimate"]
 ################################
-#E(Y/A,L) nu nog krijgen (maar hoe)
+#E(Y/A,L) nu nog krijgen (maar hoe) -> zoiets? (zie hieronder) maar crossfitted 5-fold (gewoon altijd zelfde folds gebruiken?)
+rf_Y <- regression_forest(XW[train, ], Y[train])
+Yx_hat[test] <- predict(rf_Y, X[test, ])$predictions
 
-xx<-
 ###################################
 #dan is het gewoon invullen in die lange EIF formule en kom je er dus wel
 
@@ -257,4 +263,61 @@ low_ci<-sigma_sq_est-1.96*sigma_sq_se
 
 ```{r, echo = FALSE}
 #Q4
+# DR-learner implementation
+# Reference: solutions of lab Causal Prediction
+# wel nog goed verder te bekijken...
+
+Y1_hat = rep(NA, n)
+Y0_hat = rep(NA, n)
+
+for (k in 1:K) {
+
+  train <- folds != k
+  test <- folds == k
+  
+  # E[Y|X, A=1]
+  rf_Y1 <- regression_forest(X[train & W==1, ], Y[train & W==1, ])
+  Y1_hat[test] <- predict(rf_Y1, X[test, ])$predictions
+  
+  # E[Y|X, A=0]
+  rf_Y0 <- regression_forest(X[train & W==0, ], Y[train & W==0, ])
+  Y0_hat[test] <- predict(rf_Y0, X[test, ])$predictions
+  
+  # E[A|X]
+  rf_A <- regression_forest(X[train, ], W[train])
+  A_hat[test] <- predict(rf_A, X[test, ])$predictions
+}
 ```
+
+
+```{r, echo = FALSE}
+# crossfitting nodig?
+###### Compute the pseudooutcomes in the training sets.
+C =  #formule cursus
+
+```
+
+
+
+```{r, echo = FALSE}
+###### Regress the pseudooutcomes in the combined training data set
+
+# crossfitting nodig?
+sl_lib = c("SL.glm", "SL.gam", "SL.ranger", "SL.gbm")
+
+sl_fit <- SuperLearner(
+  Y = C,
+  X = X$inc, # hier enkel de covariate?
+  family = gaussian(),
+  SL.library = sl_lib,
+  method = "method.NNLS"
+)
+
+data.01cc.test$CATE.DR <- predict(sl_fit, newdata = x.test, onlySL = TRUE)$pred
+
+####### Plot the treatment effects obtained on the test set on a histogram.
+hist(data.01cc.test$CATE.DR, xlab="DR-learner", main="")
+
+```
+
+
