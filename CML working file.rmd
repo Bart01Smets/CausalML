@@ -22,7 +22,13 @@ library(ggplot2)
 
 ```{r, echo = FALSE}
 #Q1
-#1a)
+#1a) with cross-fitting
+
+# Reference doc:
+# https://grf-labs.github.io/grf/reference/causal_forest.html
+# https://grf-labs.github.io/grf/reference/regression_forest.html
+
+set.seed(123)
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
@@ -32,25 +38,78 @@ Y <- pension$net_tfa
 W <- pension$e401
 X <- pension[, c("age", "inc", "fsize", "educ", 
                                  "marr", "twoearn", "db", "pira", "hown")]
+
+K = 2 # set to 5!
+n = nrow(X)
+folds = sample(rep(1:K, length.out = n))
+
+Y_hat = rep(NA, n)
+A_hat = rep(NA, n)
+
+for (k in 1:K) {
+  
+  train = which(folds != k)
+  test  = which(folds == k)
+  
+  # E[Y|X]
+  rf_Y <- regression_forest(X[train, ], Y[train])
+  Y_hat[test] <- predict(rf_Y, X[test, ])$predictions
+  
+  # E[A|X]
+  rf_A <- regression_forest(X[train, ], W[train])
+  A_hat[test] <- predict(rf_A, X[test, ])$predictions
+}
+
 #train causal forest
-causal_forest <- causal_forest(X = X, Y = Y, W = W)
+causal_forest <- causal_forest(X = X, Y = Y, W = W,
+  Y.hat = Y_hat,
+  W.hat = A_hat,
+  num.trees = 2000,
+  min.node.size = 5,
+  seed = 123
+)
+
 # Extract CATE 
 pension$CATE <- predict(causal_forest)$predictions
 
 hist(pension$CATE)
-
-#Interpretation CATE histogram: The curve is clearly skewed to the right, implying that most individuals benefited from participation in 401(k) in terms of accumulated assets. Also a pretty wide spread so clearly heterogeneity in treatment effects
-
-#1b)
-#Very preliminary explanation, but I hope this is the vague idea
-
-#Depends on the variable? If it's a confounder it is necessary (otherwise the variables look falsely correlated).
-# If it's a variable only having on effect on Y, it doesn' matter that much, but still best to do it to reduce noise (I think this was non-collapsability, right?).
-# If it's a mediator, don't condition as your effect might go through your mediator and you might miss it this way.
-# If it's a collider, definetely don't condition on it as it opens the path, creating a false association.
-# Probably expects us to discuss this for the specific covariates.
-# To do: create DAG
+hist(Y_hat)
+hist(A_hat)
 ```
+```{r, echo = FALSE}
+hist(pension$CATE, main = "CATE")
+hist(Y_hat, main = "Expected responses")
+hist(A_hat, main = "Propensity scores")
+```
+
+```{r, echo = FALSE}
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth() +
+  labs(title = "Treatment effect vs income")
+```
+
+```{r, echo = FALSE}
+ggplot(pension, aes(x = age, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth() +
+  labs(title = "Treatment effect vs age")
+```
+
+```{r, echo = FALSE}
+ate <- average_treatment_effect(causal_forest,
+                               target.sample = "all",
+                               method = "AIPW")
+
+ate
+```
+
+```{r, echo = FALSE}
+ci_low  <- ate[1] - 1.96 * ate[2]
+ci_high <- ate[1] + 1.96 * ate[2]
+```
+
+
 
 ## Non-collapsibility in Non-linear Models
 
