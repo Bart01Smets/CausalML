@@ -40,25 +40,25 @@ X <- pension[, c("age", "inc", "fsize", "educ",
 AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
                                  "marr", "twoearn", "db", "pira", "hown")]
 
-K = 5 # set to 5!
-n = nrow(X)
-folds = sample(rep(1:K, length.out = n))
+K <- 5 # set to 5!
+n <- nrow(X)
+folds <- sample(rep(1:K, length.out = n))
 
-Y_X_hat = rep(NA, n)
-Y_AX_hat = rep(NA, n)
-A_hat = rep(NA, n)
+Y_X_hat <- rep(NA, n)
+Y_AX_hat <- rep(NA, n)
+A_hat <- rep(NA, n)
 
 for (k in 1:K) {
   
-  train = which(folds != k)
-  test  = which(folds == k)
+  train <- which(folds != k)
+  test  <- which(folds == k)
   
   # E[Y|X]
   rf_Y_X <- regression_forest(X[train, ], Y[train])
   Y_X_hat[test] <- predict(rf_Y_X, X[test, ])$predictions
   
   # E[A|X]
-  rf_A <- regression_forest(X[train, ], A[train])
+  rf_A <- regression_forest(X[train, ], A[train]) # or use probability/classification forest?
   A_hat[test] <- predict(rf_A, X[test, ])$predictions
   
   # E[Y|A, L] (exercise 3)
@@ -209,7 +209,7 @@ pension$quartiles <- ntile(pension$CATE, 4)
 
 # Just run the function explicitly for each quartile
 Q1_ATE <- average_treatment_effect(causal_forest, subset = (pension$quartiles == 1))
-Q2_ATE<- average_treatment_effect(causal_forest, subset = (pension$quartiles == 2))
+Q2_ATE <- average_treatment_effect(causal_forest, subset = (pension$quartiles == 2))
 Q3_ATE <- average_treatment_effect(causal_forest, subset = (pension$quartiles == 3))
 Q4_ATE <- average_treatment_effect(causal_forest, subset = (pension$quartiles == 4))
 
@@ -306,57 +306,52 @@ low_ci<-sigma_sq_est-1.96*sigma_sq_se
 # Reference: solutions of lab Causal Prediction
 # wel nog goed verder te bekijken...
 
-Y1_hat = rep(NA, n)
-Y0_hat = rep(NA, n)
+K <- 5 # set to 5
+folds <- sample(rep(1:K, length.out = n))
 
-for (k in 1:K) {
+Y1_hat <- matrix(NA, nrow = n, ncol = 5)
+Y0_hat <- matrix(NA, nrow = n, ncol = 5)
+A_hat <- matrix(NA, nrow = n, ncol = 5)
+C_DR <- matrix(NA, nrow = n, ncol = 5)
 
-  train <- folds != k
-  test <- folds == k
-  
-  # E[Y|X, A=1]
-  rf_Y1 <- regression_forest(X[train & W==1, ], Y[train & W==1, ])
-  Y1_hat[test] <- predict(rf_Y1, X[test, ])$predictions
-  
-  # E[Y|X, A=0]
-  rf_Y0 <- regression_forest(X[train & W==0, ], Y[train & W==0, ])
-  Y0_hat[test] <- predict(rf_Y0, X[test, ])$predictions
-  
-  # E[A|X]
-  rf_A <- regression_forest(X[train, ], W[train])
-  A_hat[test] <- predict(rf_A, X[test, ])$predictions
-}
-```
-
-
-```{r, echo = FALSE}
-# crossfitting nodig?
-###### Compute the pseudooutcomes in the training sets.
-C =  #formule cursus
-
-```
-
-
-
-```{r, echo = FALSE}
-###### Regress the pseudooutcomes in the combined training data set
-
-# crossfitting nodig?
 sl_lib = c("SL.glm", "SL.gam", "SL.ranger", "SL.gbm")
 
-sl_fit <- SuperLearner(
-  Y = C,
-  X = X$inc, # hier enkel de covariate?
-  family = gaussian(),
-  SL.library = sl_lib,
-  method = "method.NNLS"
-)
+for (l in 1:L) {
+  
+  k_range <- 1:K
+  k_range <- k_range[k_range != l]
+  
+  for (k in k_range) {
+    train_k <- folds %in% k_range & folds != k
+    test_k <- folds == k
+    
+    # E[Y|X, A=1]
+    rf_Y1 <- regression_forest(X[train_k & W==1, ], Y[train_k & W==1, ])
+    Y1_hat[test_k, k] <- predict(rf_Y1, X[test_k, ])$predictions
+    
+    # E[Y|X, A=0]
+    rf_Y0 <- regression_forest(X[train_k & W==0, ], Y[train_k & W==0, ])
+    Y0_hat[test_k, k] <- predict(rf_Y0, X[test_k, ])$predictions
+    
+    # E[A|X]
+    rf_A <- regression_forest(X[train_k, ], A[train_k])
+    A_hat[test_k, k] <- predict(rf_A, X[test_k, ])$predictions
+    
+    # pseudooutcomes C
+    C_DR[test_k, k] <- A[test_k]/A_hat[test_k, k] * (Y[test_k] - Y1_hat[test_k, k]) - (1-A[test_k])/(1-A_hat[test_k, k]) * (Y[test_k] - Y0_hat[test_k, k]) + Y1_hat[test_k, k] - Y0_hat[test_k, k]
+    
+  }
+  
+  train <- folds != l
+  test <- folds == l
+  
+  # Regress the pseudooutcomes in the combined training data set
+  lm_fit <- lm(C_DR[train, l] ~ X[train, "inc"])
 
-data.01cc.test$CATE.DR <- predict(sl_fit, newdata = x.test, onlySL = TRUE)$pred
-
-####### Plot the treatment effects obtained on the test set on a histogram.
-hist(data.01cc.test$CATE.DR, xlab="DR-learner", main="")
-
+  # Predict CATE on the test set
+  CATE[test] <- predict(lm_fit, newdata = data.frame(X[test, "inc"]))
+  
+}
 ```
 
 
