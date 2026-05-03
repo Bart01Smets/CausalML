@@ -60,6 +60,7 @@ for (k in 1:K) {
   # E[A|X]
   rf_A <- regression_forest(X[train, ], A[train]) # or use probability/classification forest?
   A_hat[test] <- predict(rf_A, X[test, ])$predictions
+  # truncation propensity scores toevoegen
   
   # E[Y|A, L] (exercise 3)
   rf_Y_AX <- regression_forest(AX[train, ], Y[train])
@@ -89,7 +90,7 @@ pension$CATE_lower <- pension$CATE - 1.96 * pension$CATE_se
 pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
 ```
 
-```{r, echo = FALSE}
+````{r, echo = FALSE}
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
@@ -106,10 +107,12 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE")
-hist(Y_hat, main = "Expected responses")
+hist(Y_X_hat, main = "Expected responses")
 hist(A_hat, main = "Propensity scores")
 ```
-
+```{r, echo = FALSE}
+hist(A_hat, main = "Propensity scores")
+```
 
 ```{r, echo = FALSE}
 saveRDS(causal_forest, file = "causal_forest_model_ex1_2.rds")
@@ -303,6 +306,10 @@ low_ci<-sigma_sq_est-1.96*sigma_sq_se
 ```{r, echo = FALSE}
 #Q4
 # DR-learner implementation
+# Assumptions
+# 1) heterogeneity only in income (final regression step)
+# 2) Doubly robust: als 1 van de nuisance paremeters goed geschat is, is het goed
+
 # Reference: solutions of lab Causal Prediction
 # wel nog goed verder te bekijken...
 
@@ -314,9 +321,7 @@ Y0_hat <- matrix(NA, nrow = n, ncol = 5)
 A_hat <- matrix(NA, nrow = n, ncol = 5)
 C_DR <- matrix(NA, nrow = n, ncol = 5)
 
-sl_lib = c("SL.glm", "SL.gam", "SL.ranger", "SL.gbm")
-
-for (l in 1:L) {
+for (l in 1:K) {
   
   k_range <- 1:K
   k_range <- k_range[k_range != l]
@@ -354,4 +359,7 @@ for (l in 1:L) {
 }
 ```
 
+ATE = average CATE klopt niet
+Betrouwbaarheid ATE obv sd CATES mag niet
+Betrouwbaarheidsintervallen CATEs?
 
