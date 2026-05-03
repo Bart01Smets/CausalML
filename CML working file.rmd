@@ -76,10 +76,33 @@ causal_forest <- causal_forest(X = X, Y = Y, W = A,
   min.node.size = 5,
   seed = 123
 )
-
-# Extract CATE 
-pension$CATE <- predict(causal_forest)$predictions
 ```
+
+```{r, echo = FALSE}
+# Extract CATE and variances
+tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
+pension$CATE <- tau.hat.oob$predictions
+pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
+
+# 95% betrouwbaarheidsintervallen
+pension$CATE_lower <- pension$CATE - 1.96 * pension$CATE_se
+pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
+```
+
+```{r, echo = FALSE}
+# plot 95% CI's
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
+  labs(title = "Treatment effect vs income (with uncertainty)")
+```
+
+```{r, echo = FALSE}
+# plot 95% CI's
+ggplot(pension, aes(x = age, y = CATE)) +
+  geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
+  labs(title = "Treatment effect vs income (with uncertainty)")
+```
+
 
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE")
