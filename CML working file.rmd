@@ -21,8 +21,7 @@ library(ggplot2)
 ```
 
 ```{r, echo = FALSE}
-#Q1
-#1a) with cross-fitting
+# Cross-fitting
 
 # Reference doc:
 # https://grf-labs.github.io/grf/reference/causal_forest.html
@@ -35,17 +34,18 @@ variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ",
 
 
 Y <- pension$net_tfa
-W <- pension$e401
+A <- pension$e401
 X <- pension[, c("age", "inc", "fsize", "educ", 
                                  "marr", "twoearn", "db", "pira", "hown")]
-XW <- pension[, c("e401", "age", "inc", "fsize", "educ", 
+AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
                                  "marr", "twoearn", "db", "pira", "hown")]
 
 K = 5 # set to 5!
 n = nrow(X)
 folds = sample(rep(1:K, length.out = n))
 
-Y_hat = rep(NA, n)
+Y_X_hat = rep(NA, n)
+Y_AX_hat = rep(NA, n)
 A_hat = rep(NA, n)
 
 for (k in 1:K) {
@@ -54,17 +54,23 @@ for (k in 1:K) {
   test  = which(folds == k)
   
   # E[Y|X]
-  rf_Y <- regression_forest(X[train, ], Y[train])
-  Y_hat[test] <- predict(rf_Y, X[test, ])$predictions
+  rf_Y_X <- regression_forest(X[train, ], Y[train])
+  Y_X_hat[test] <- predict(rf_Y_X, X[test, ])$predictions
   
   # E[A|X]
-  rf_A <- regression_forest(X[train, ], W[train])
+  rf_A <- regression_forest(X[train, ], A[train])
   A_hat[test] <- predict(rf_A, X[test, ])$predictions
+  
+  # E[Y|A, L] (exercise 3)
+  rf_Y_AX <- regression_forest(AX[train, ], Y[train])
+  Y_AX_hat[test] <- predict(rf_Y_AX, AX[test, ])$predictions
 }
+```
 
-#train causal forest
-causal_forest <- causal_forest(X = X, Y = Y, W = W,
-  Y.hat = Y_hat,
+```{r, echo = FALSE}
+# 1a) Train Causal Forest
+causal_forest <- causal_forest(X = X, Y = Y, W = A,
+  Y.hat = Y_X_hat,
   W.hat = A_hat,
   num.trees = 2000,
   min.node.size = 5,
@@ -74,13 +80,16 @@ causal_forest <- causal_forest(X = X, Y = Y, W = W,
 # Extract CATE 
 pension$CATE <- predict(causal_forest)$predictions
 ```
+
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE")
 hist(Y_hat, main = "Expected responses")
 hist(A_hat, main = "Propensity scores")
 ```
+
+
 ```{r, echo = FALSE}
-saveRDS(causal_forest, file = "causal_forest_model_ex1.rds")
+saveRDS(causal_forest, file = "causal_forest_model_ex1_2.rds")
 ```
 
 ```{r, echo = FALSE}
@@ -101,6 +110,7 @@ ggplot(pension, aes(x = age, y = CATE)) +
   labs(title = "Treatment effect vs age")
 ```
 
+Determining the ATE and his confidence interval.
 ```{r, echo = FALSE}
 ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
@@ -213,21 +223,27 @@ High_CI_4
 
 ```{r, echo = FALSE}
 #Q3
-#get CATE predictions (E(Y1-Y0)/L)
+
+## CATE predictions (E(Y1-Y0)/L)
 pension$CATE
-#prop score (P(A=1/L)) # crossfitted version van hierboven?
-prop_score<-causal_forest$W.hat
+
+## prop score (P(A=1/L))
+propscore <- A_hat
+# zonder cross-fitting: prop_score<-causal_forest$W.hat
 
 print(causal_forest)
-#E(Y/L) # crossfitted version van hierboven?
-var<-causal_forest$Y.hat
+
+## E(Y/L)
+var <- Y_X_hat
+# zonder cross-fitting: var<-causal_forest$Y.hat
+
 
 #Get actual average treatment effect (E(Y1-Y0))
 average_treatment_effect<-average_treatment_effect(causal_forest)["estimate"]
 ################################
-#E(Y/A,L) nu nog krijgen (maar hoe) -> zoiets? (zie hieronder) maar crossfitted 5-fold (gewoon altijd zelfde folds gebruiken?)
-rf_Y <- regression_forest(XW[train, ], Y[train])
-Yx_hat[test] <- predict(rf_Y, X[test, ])$predictions
+
+## E(Y/A,L)
+Y_AX_hat
 
 ###################################
 #dan is het gewoon invullen in die lange EIF formule en kom je er dus wel
