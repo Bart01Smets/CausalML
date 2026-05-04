@@ -90,12 +90,13 @@ pension$CATE_lower <- pension$CATE - 1.96 * pension$CATE_se
 pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
 ```
 
-````{r, echo = FALSE}
+```{r, echo = FALSE}
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
   labs(title = "Treatment effect vs income (with uncertainty)")
 ```
+
 
 ```{r, echo = FALSE}
 # plot 95% CI's
@@ -188,7 +189,7 @@ In addition, including variables in an analysis can have different effects depen
 
 - *Years of Education* could be a *common cause*.  
   The more education an individual has, the higher their income tends to be, and the more likely they may be to participate in a 401(k) program.
-
+  
 ## Collider DAG example
 \begin{center}
 \textbf{Collider} \\
@@ -207,6 +208,7 @@ In addition, including variables in an analysis can have different effects depen
 \end{center}
 
 ```{r, echo = FALSE}
+
 #Q2
 pension$quartiles <- ntile(pension$CATE, 4)
 
@@ -247,14 +249,21 @@ High_CI_4
 
 ```
 
+First, we can see that the treatment effect in all four quartiles is positive. Thus, this means that for the whole population, 401(k) eligibility has a significant, positive impact on net financial assets. 
+
+In terms of treatment heterogeneity, we find that the threatment effects for the bottom three quartiles are relatively similar, ranging from $5,826 to $6,437. However, for the 25% of individuals predicted to benefit the most, the treatment effect almost doubles. 
+
+Thus, although the confidence intervals still slightly overlap, still a non-linear treatment effect is suggested. The causal forest did thus succesfully find a sub-population (likely those with higher incomes or higher saving preferences), for which the tax-advantaged saving mechanism is effective.
+
 ```{r, echo = FALSE}
 #Q3
 
 ## CATE predictions (E(Y1-Y0)/L)
-pension$CATE
+CATEhat<-pension$CATE
 
 ## prop score (P(A=1/L))
-propscore <- A_hat
+#propscore <- A_hat
+propscore <- pmax(0.01, pmin(0.99, A_hat))
 # zonder cross-fitting: prop_score<-causal_forest$W.hat
 
 print(causal_forest)
@@ -263,46 +272,42 @@ print(causal_forest)
 var <- Y_X_hat
 # zonder cross-fitting: var<-causal_forest$Y.hat
 
-
 #Get actual average treatment effect (E(Y1-Y0))
-average_treatment_effect<-average_treatment_effect(causal_forest)["estimate"]
-################################
-
+atehat<-average_treatment_effect(causal_forest)["estimate"]
+#Get actual average treatment effect (E(Y1-Y0))
+atehat <- as.numeric(average_treatment_effect(causal_forest)["estimate"])
 ## E(Y/A,L)
 Y_AX_hat
 
-###################################
-#dan is het gewoon invullen in die lange EIF formule en kom je er dus wel
+# Fill in the formula for the EIF
 
+# (Squared difference CATE and ATE) (Term 1)
+term1<-(CATEhat-atehat)^2
 
-#Dit is die eerste term uit de fmle
-term1<-(pension$CATE-average_treatment_effect)^2
+# Inverse Probability Weights (Term 2)
+term2<-(A/propscore)- ((1-A)/(1-propscore))
 
-#weight term, die meest rechtse term uit de fmle
-term2<-(W/prop_score)- ((1-W)/(1-prop_score))
-
-#Laatste term uit de fmle, residual
-term3<-(Y-xx)
+# Residuals (Term 3)
+term3<-(Y-Y_AX_hat)
   
-#combine
-  
-formula<-term1+2*(pension$CATE-average_treatment_effect)*term2*term3
-#estimate sigma^2
-sigma_sq_est<-mean(formula)
+# Combine to get efficient influence function
+EIF<-term1+2*(CATEhat-atehat)*term2*term3
+#estimate sigma^2, mean(EIF)=0 per definition
+sigma_sq_est<-mean(EIF)
 
 #get standard error
-ss<-length(formula)
-sigma_sq_se<- sd(formula)/sqrt(ss)
+ss<-length(EIF)
+sigma_sq_se<- sd(EIF)/sqrt(ss)
 #get CI
-high_ci<sigma_sq_est-+1.96*sigma_sq_se
+high_ci<-sigma_sq_est+1.96*sigma_sq_se
 low_ci<-sigma_sq_est-1.96*sigma_sq_se
 
 
-
-
+cat("Estimated Variance (Sigma^2):", sigma_sq_est, "\n")
+cat("95% CI: [", low_ci, ",", high_ci, "]\n")
 
 ```
-
+The 95% confidence interval still overlaps with 0, so there is no proof of a heterogenous treatment effect...
 ```{r, echo = FALSE}
 #Q4
 # DR-learner implementation
