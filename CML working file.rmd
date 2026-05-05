@@ -292,10 +292,11 @@ term3<-(Y-Y_AX_hat)
   
 # Combine to get efficient influence function
 EIF<-term1+2*(CATEhat-atehat)*term2*term3
-#estimate sigma^2, mean(EIF)=0 per definition
+# estimate sigma^2, mean(EIF)=0 per definition
 sigma_sq_est<-mean(EIF)
 
-#get standard error
+#get standard error of sigma_sq_est
+# ss = sample size
 ss<-length(EIF)
 sigma_sq_se<- sd(EIF)/sqrt(ss)
 #get CI
@@ -307,7 +308,7 @@ cat("Estimated Variance (Sigma^2):", sigma_sq_est, "\n")
 cat("95% CI: [", low_ci, ",", high_ci, "]\n")
 
 ```
-The 95% confidence interval still overlaps with 0, so there is no proof of a heterogenous treatment effect...
+The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.
 ```{r, echo = FALSE}
 #Q4
 # DR-learner implementation
