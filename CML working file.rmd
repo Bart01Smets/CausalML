@@ -249,7 +249,7 @@ High_CI_4
 
 ```
 
-First, we can see that the treatment effect in all four quartiles is positive. Thus, this means that for the whole population, 401(k) eligibility has a significant, positive impact on net financial assets. 
+First, we can see that the treatment effect in all four quartiles is positive. This suggests that, on average, 401(k) eligibility has a positive impact on net financial assets across all four quartiles. 
 
 In terms of treatment heterogeneity, we find that the threatment effects for the bottom three quartiles are relatively similar, ranging from $5,826 to $6,437. However, for the 25% of individuals predicted to benefit the most, the treatment effect almost doubles. 
 
