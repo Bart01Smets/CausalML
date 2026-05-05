@@ -319,13 +319,14 @@ The 95% confidence interval still overlaps with 0, so there is no evidence of ef
 # Reference: solutions of lab Causal Prediction
 # wel nog goed verder te bekijken...
 
-K <- 5 # set to 5
+K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
 folds <- sample(rep(1:K, length.out = n))
+eps <- 0.01 # epsilon for truncation of propensity-scores
 
-Y1_hat <- matrix(NA, nrow = n, ncol = 5)
-Y0_hat <- matrix(NA, nrow = n, ncol = 5)
-A_hat <- matrix(NA, nrow = n, ncol = 5)
-C_DR <- matrix(NA, nrow = n, ncol = 5)
+Y1_hat <- matrix(NA, nrow = n, ncol = K)
+Y0_hat <- matrix(NA, nrow = n, ncol = K)
+A_hat <- matrix(NA, nrow = n, ncol = K)
+C_DR <- matrix(NA, nrow = n, ncol = K)
 
 for (l in 1:K) {
   
@@ -337,19 +338,20 @@ for (l in 1:K) {
     test_k <- folds == k
     
     # E[Y|X, A=1]
-    rf_Y1 <- regression_forest(X[train_k & W==1, ], Y[train_k & W==1, ])
-    Y1_hat[test_k, k] <- predict(rf_Y1, X[test_k, ])$predictions
+    rf_Y1 <- regression_forest(X[train_k & A==1, ], Y[train_k & A==1, ])
+    Y1_hat[test_k, l] <- predict(rf_Y1, X[test_k, ])$predictions
     
     # E[Y|X, A=0]
-    rf_Y0 <- regression_forest(X[train_k & W==0, ], Y[train_k & W==0, ])
-    Y0_hat[test_k, k] <- predict(rf_Y0, X[test_k, ])$predictions
+    rf_Y0 <- regression_forest(X[train_k & A==0, ], Y[train_k & A==0, ])
+    Y0_hat[test_k, l] <- predict(rf_Y0, X[test_k, ])$predictions
     
     # E[A|X]
     rf_A <- regression_forest(X[train_k, ], A[train_k])
-    A_hat[test_k, k] <- predict(rf_A, X[test_k, ])$predictions
+    A_hat_temp <- predict(rf_A, X[test_k, ])$predictions
+    A_hat[test_k, l] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
     
     # pseudooutcomes C
-    C_DR[test_k, k] <- A[test_k]/A_hat[test_k, k] * (Y[test_k] - Y1_hat[test_k, k]) - (1-A[test_k])/(1-A_hat[test_k, k]) * (Y[test_k] - Y0_hat[test_k, k]) + Y1_hat[test_k, k] - Y0_hat[test_k, k]
+    C_DR[test_k, l] <- A[test_k]/A_hat[test_k, l] * (Y[test_k] - Y1_hat[test_k, l]) - (1-A[test_k])/(1-A_hat[test_k, l]) * (Y[test_k] - Y0_hat[test_k, l]) + Y1_hat[test_k, l] - Y0_hat[test_k, l]
     
   }
   
@@ -363,9 +365,24 @@ for (l in 1:K) {
   CATE[test] <- predict(lm_fit, newdata = data.frame(X[test, "inc"]))
   
 }
+
+# ATE
+EIF <- rowMeans(C_DR)
+ate_hat <- mean(EIF)
+
+# The ATE should be equal to the mean of the CATE
+mean(CATE)
+se_hat  <- sd(EIF) / sqrt(n)
 ```
 
 ATE = average CATE klopt niet
 Betrouwbaarheid ATE obv sd CATES mag niet
 Betrouwbaarheidsintervallen CATEs?
+
+```{r, echo = FALSE}
+hist(CATE, main = "CATE")
+hist(rowmeans(Y1_hat), main = "Expected responses with treatment")
+hist(rowmeans(Y0_hat), main = "Expected responses without treatment")
+hist(rowmeans(A_hat), main = "Propensity scores")
+```
 
