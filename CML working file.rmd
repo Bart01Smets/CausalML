@@ -367,7 +367,7 @@ for (l in 1:K) {
 }
 
 # ATE
-EIF <- rowMeans(C_DR)
+EIF <- rowSums(C_DR)/(K-1)
 ate_hat <- mean(EIF)
 
 # The ATE should be equal to the mean of the CATE
