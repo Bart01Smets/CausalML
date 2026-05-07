@@ -17,7 +17,6 @@ library(knitr)
 data(pension)
 library(ggdag)
 library(ggplot2)
-
 ```
 
 ```{r, echo = FALSE}
@@ -309,8 +308,9 @@ cat("95% CI: [", low_ci, ",", high_ci, "]\n")
 
 ```
 The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.
+
 ```{r, echo = FALSE}
-#Q4
+# Q4
 # DR-learner implementation
 # Assumptions
 # 1) heterogeneity only in income (final regression step)
@@ -319,6 +319,19 @@ The 95% confidence interval still overlaps with 0, so there is no evidence of ef
 # Reference: solutions of lab Causal Prediction
 # wel nog goed verder te bekijken...
 
+set.seed(123)
+
+variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
+          "marr", "twoearn", "db", "pira", "hown")
+
+Y <- pension$net_tfa
+A <- pension$e401
+X <- pension[, c("age", "inc", "fsize", "educ", 
+                                 "marr", "twoearn", "db", "pira", "hown")]
+AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
+                                 "marr", "twoearn", "db", "pira", "hown")]
+
+n <- nrow(X)
 K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
 folds <- sample(rep(1:K, length.out = n))
 eps <- 0.01 # epsilon for truncation of propensity-scores
@@ -327,6 +340,13 @@ Y1_hat <- matrix(NA, nrow = n, ncol = K)
 Y0_hat <- matrix(NA, nrow = n, ncol = K)
 A_hat <- matrix(NA, nrow = n, ncol = K)
 C_DR <- matrix(NA, nrow = n, ncol = K)
+CATE <- rep(NA, n)
+```
+
+```{r, echo = FALSE}
+# Q4
+# DR-learner implementation
+# Loop
 
 for (l in 1:K) {
   
@@ -338,11 +358,11 @@ for (l in 1:K) {
     test_k <- folds == k
     
     # E[Y|X, A=1]
-    rf_Y1 <- regression_forest(X[train_k & A==1, ], Y[train_k & A==1, ])
+    rf_Y1 <- regression_forest(X[train_k & A==1, ], Y[train_k & A==1])
     Y1_hat[test_k, l] <- predict(rf_Y1, X[test_k, ])$predictions
     
     # E[Y|X, A=0]
-    rf_Y0 <- regression_forest(X[train_k & A==0, ], Y[train_k & A==0, ])
+    rf_Y0 <- regression_forest(X[train_k & A==0, ], Y[train_k & A==0])
     Y0_hat[test_k, l] <- predict(rf_Y0, X[test_k, ])$predictions
     
     # E[A|X]
@@ -358,16 +378,34 @@ for (l in 1:K) {
   train <- folds != l
   test <- folds == l
   
+  # training dataframe
+  train_df <- data.frame(
+    C_DR = C_DR[train, l],
+    inc = X[train, "inc"]
+  )
+  
+  # omit columns with NA values before regression
+  # train_df <- na.omit(train_df)
+  
   # Regress the pseudooutcomes in the combined training data set
-  lm_fit <- lm(C_DR[train, l] ~ X[train, "inc"])
+  lm_fit <- lm(C_DR ~ inc, data = train_df)
+
+  # test dataframe
+  test_df <- data.frame(
+    inc = X[test, "inc"]
+  )
 
   # Predict CATE on the test set
-  CATE[test] <- predict(lm_fit, newdata = data.frame(X[test, "inc"]))
-  
+  CATE[test] <- predict(lm_fit, newdata = test_df)
 }
 
+
+```
+
+```{r, echo = FALSE}
+# ATE calculations
 # ATE
-EIF <- rowSums(C_DR)/(K-1)
+EIF <- rowSums(C_DR, na.rm = TRUE)/(K-1)
 ate_hat <- mean(EIF)
 
 # The ATE should be equal to the mean of the CATE
@@ -375,14 +413,37 @@ mean(CATE)
 se_hat  <- sd(EIF) / sqrt(n)
 ```
 
-ATE = average CATE klopt niet
-Betrouwbaarheid ATE obv sd CATES mag niet
-Betrouwbaarheidsintervallen CATEs?
+se_hat
+[1] 1123.617
+mean(EIF)
+[1] 7897.361
+mean(CATE)
+[1] 7888.084
+
+Boven- en ondergrens ATE
+[1] 10099.65
+[1] 5695.072
+
+```{r, echo = FALSE}
+# 95% betrouwbaarheidsintervallen
+mean(EIF) + 1.96 * se_hat
+mean(EIF) - 1.96 * se_hat
+```
 
 ```{r, echo = FALSE}
 hist(CATE, main = "CATE")
-hist(rowmeans(Y1_hat), main = "Expected responses with treatment")
-hist(rowmeans(Y0_hat), main = "Expected responses without treatment")
-hist(rowmeans(A_hat), main = "Propensity scores")
+```
+```{r, echo = FALSE}
+# plot 95% CI's
+pension$CATE <- CATE
+ggplot(pension, aes(x = inc, y = CATE))  +
+  geom_smooth() +
+  labs(title = "Treatment effect vs income")
+```
+
+```{r, echo = FALSE}
+hist(rowSums(Y1_hat, na.rm = TRUE)/(K-1), main = "Expected responses with treatment", xlab = "E[Y1]")
+hist(rowSums(Y0_hat, na.rm = TRUE)/(K-1), main = "Expected responses without treatment", xlab = "E[Y0]")
+hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
 
