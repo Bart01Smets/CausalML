@@ -106,9 +106,9 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 
 ```{r, echo = FALSE}
-hist(pension$CATE, main = "CATE")
-hist(Y_X_hat, main = "Expected responses")
-hist(A_hat, main = "Propensity scores")
+hist(pension$CATE, main = "CATE", xlab = "CATE")
+hist(Y_X_hat, main = "Expected responses", xlab = "Y")
+hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 ```{r, echo = FALSE}
 hist(A_hat, main = "Propensity scores")
