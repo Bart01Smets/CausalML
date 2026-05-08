@@ -213,20 +213,45 @@ In addition, including variables in an analysis can have different effects depen
 - *Years of Education* could be a *common cause*.  
   The more education an individual has, the higher their income tends to be, and the more likely they may be to participate in a 401(k) program.
   
-## Collider DAG example
+% --- COLLIDER ---
 \begin{center}
 \textbf{Collider} \\
 \vspace{0.5cm}
 \begin{tikzpicture}[>=stealth, node distance=2cm, thick]
-    % Nodes
-    \node (A) at (0,2) {Eligibility (A)};
-    \node (Y) at (6,2) {Net Assets (Y)};
-    \node (Z) at (3,0) { (Collider)};
-
-    % Edges
+    \node (A) at (0,2) {Income (A)};
+    \node (Y) at (6,2) {Outcome (Y)};
+    \node (Z) at (3,0) {Collider (Z)};
     \draw[->] (A) -- (Y);
     \draw[->] (A) -- (Z);
     \draw[->] (Y) -- (Z);
+\end{tikzpicture}
+\end{center}
+
+% --- MEDIATOR ---
+\begin{center}
+\textbf{Mediator} \\
+\vspace{0.5cm}
+\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
+    \node (A) at (0,2)  {Income (A)};
+    \node (M) at (3,2)  {Mediator (M)};
+    \node (Y) at (6,2)  {Outcome (Y)};
+    \draw[->] (A) -- (M);
+    \draw[->] (M) -- (Y);
+    \draw[->, bend right=30] (A) to (Y);  % direct effect
+\end{tikzpicture}
+\end{center}
+
+% --- COMMON CAUSE ---
+\begin{center}
+\textbf{Common Cause} \\
+\vspace{0.5cm}
+\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
+    \node (A) at (0,2)  {Income (A)};
+    \node (Y) at (6,2)  {Outcome (Y)};
+    \node (C) at (3,4)  {Common Cause (C)};
+    \draw[->] (A) -- (Y);
+    \draw[->] (C) -- (A);
+    \draw[->] (C) -- (Y);
 \end{tikzpicture}
 \end{center}
 
