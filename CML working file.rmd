@@ -80,7 +80,7 @@ causal_forest <- causal_forest(X = X, Y = Y, W = A,
 
 ```{r, echo = FALSE}
 # Extract CATE and variances
-tau.hat.oob <- predict(causal_forest2, estimate.variance = TRUE)
+tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
 pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
 
@@ -107,11 +107,10 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE", xlab = "CATE")
-hist(Y_X_hat, main = "Expected responses", xlab = "Y")
-hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 ```{r, echo = FALSE}
-hist(A_hat, main = "Propensity scores")
+hist(Y_X_hat, main = "Expected responses", xlab = "Y")
+hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 
 ```{r, echo = FALSE}
@@ -138,7 +137,7 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 Determining the ATE and his confidence interval.
 ```{r, echo = FALSE}
-ate <- average_treatment_effect(causal_forest2,
+ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
                                method = "AIPW")
 
@@ -146,6 +145,9 @@ ate
 ```
 ATE - eerste run Causal Forest = 7848.365
 ATE_sd: 1131.473
+
+ATE - tweede run Causal Forest = 7835.154
+ATE_sd: 1126.654
 ```{r, echo = FALSE}
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
