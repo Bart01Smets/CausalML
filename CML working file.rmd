@@ -80,7 +80,7 @@ causal_forest <- causal_forest(X = X, Y = Y, W = A,
 
 ```{r, echo = FALSE}
 # Extract CATE and variances
-tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
+tau.hat.oob <- predict(causal_forest2, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
 pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
 
@@ -138,19 +138,21 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 Determining the ATE and his confidence interval.
 ```{r, echo = FALSE}
-ate <- average_treatment_effect(causal_forest,
+ate <- average_treatment_effect(causal_forest2,
                                target.sample = "all",
                                method = "AIPW")
 
 ate
 ```
-
+ATE - eerste run Causal Forest = 7848.365
+ATE_sd: 1131.473
 ```{r, echo = FALSE}
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
 
-
+ATE_CI_low = 5630.677
+ATE_CI_high = 10066.05
 
 ## Non-collapsibility in Non-linear Models
 
@@ -385,7 +387,7 @@ for (l in 1:K) {
   )
   
   # omit columns with NA values before regression
-  # train_df <- na.omit(train_df)
+  # train_df <- na.omit(train_df)#
   
   # Regress the pseudooutcomes in the combined training data set
   lm_fit <- lm(C_DR ~ inc, data = train_df)
@@ -403,14 +405,85 @@ for (l in 1:K) {
 ```
 
 ```{r, echo = FALSE}
+l <- 1
+train <- folds != l
+test <- folds == l
+
+# training dataframe
+train_df <- data.frame(
+  C_DR = C_DR[train, l],
+  inc = X[train, "inc"]
+)
+
+# omit columns with NA values before regression
+# train_df <- na.omit(train_df)
+
+# Plot
+ggplot(train_df, aes(x = inc, y = C_DR)) +
+geom_point(alpha = 0.2) +
+geom_smooth(method = "lm") +
+coord_cartesian(ylim = c(0, 60000)) +
+labs(title = "Treatment effect vs income")
+
+```
+```{r, echo = FALSE}
+l <- 2
+train <- folds != l
+test <- folds == l
+
+# training dataframe
+train_df <- data.frame(
+  C_DR = C_DR[train, l],
+  inc = X[train, "inc"]
+)
+
+# omit columns with NA values before regression
+# train_df <- na.omit(train_df)
+
+# Plot
+ggplot(train_df, aes(x = inc, y = C_DR)) +
+geom_point(alpha = 0.2) +
+geom_smooth(method = "lm") +
+coord_cartesian(ylim = c(0, 60000)) +
+labs(title = "Treatment effect vs income")
+
+```
+
+```{r, echo = FALSE}
+l <- 3
+train <- folds != l
+test <- folds == l
+
+# training dataframe
+train_df <- data.frame(
+  C_DR = C_DR[train, l],
+  inc = X[train, "inc"]
+)
+
+# omit columns with NA values before regression
+# train_df <- na.omit(train_df)
+
+# Plot
+ggplot(train_df, aes(x = inc, y = C_DR)) +
+geom_point(alpha = 0.2) +
+geom_smooth(method = "lm") +
+coord_cartesian(ylim = c(0, 60000)) +
+labs(title = "Treatment effect vs income")
+
+```
+
+
+
+
+```{r, echo = FALSE}
 # ATE calculations
 # ATE
-EIF <- rowSums(C_DR, na.rm = TRUE)/(K-1)
-ate_hat <- mean(EIF)
+C_DR_av <- rowSums(C_DR, na.rm = TRUE)/(K-1)
+ate_hat <- mean(C_DR_av)
 
 # The ATE should be equal to the mean of the CATE
 mean(CATE)
-se_hat  <- sd(EIF) / sqrt(n)
+se_hat  <- sd(C_DR_av) / sqrt(n)
 ```
 
 se_hat
@@ -442,8 +515,20 @@ ggplot(pension, aes(x = inc, y = CATE))  +
 ```
 
 ```{r, echo = FALSE}
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth() +
+  labs(title = "Treatment effect vs income")
+```
+
+```{r, echo = FALSE}
 hist(rowSums(Y1_hat, na.rm = TRUE)/(K-1), main = "Expected responses with treatment", xlab = "E[Y1]")
 hist(rowSums(Y0_hat, na.rm = TRUE)/(K-1), main = "Expected responses without treatment", xlab = "E[Y0]")
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
+
+We estimated the conditional average treatment effect (CATE) of eligibility for a 401(k) plan on net financial assets using a orthogonal doubly robust (DR) learner. The nuisance components — the propensity score and the conditional outcome models — were estimated using random forests, using all covariates n order to improve confounding adjustment. In the final-stage the doubly robust pseudo-outcomes were modelled on income only, using a ordinary linear model.
+
+Compared to the earlier causal forest approach, the chosen DR-learner introduces an additional modeling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies smoothly and approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically and therefore allow for more flexible nonlinear patterns and interactions. The advantage of using in the final stage a linear model instead of a Causal Forest is improved interpretability and easier visualization of the treatment effect as a function of income.
+
 
