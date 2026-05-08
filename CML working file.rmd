@@ -113,6 +113,22 @@ hist(A_hat, main = "Propensity scores")
 ```
 ```{r, echo = FALSE}
 hist(A_hat, main = "Propensity scores")
+A_hat_raw <- A_hat  
+delta <- 0.05
+A_hat[test] <- pmax(delta, pmin(1 - delta, A_hat[test]))
+
+par(mfrow = c(1, 2))
+hist(A_hat_raw, breaks = 50, main = "Raw propensity scores",
+     xlab = "", col = "lightgrey")
+abline(v = c(0.05, 0.95), col = "red", lty = 2)
+
+hist(A_hat, breaks = 50, main = "Truncated propensity scores",
+     xlab = "", col = "lightblue")
+abline(v = c(0.05, 0.95), col = "red", lty = 2)
+par(mfrow = c(1, 1))
+
+cat("Proportion truncated:", mean(A_hat_raw < 0.05 | A_hat_raw > 0.95), "\n")
+#Truncation geen groot probleem dus
 ```
 
 ```{r, echo = FALSE}
