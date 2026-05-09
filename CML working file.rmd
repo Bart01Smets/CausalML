@@ -354,7 +354,59 @@ low_ci<-sigma_sq_est-1.96*sigma_sq_se
 
 cat("Estimated Variance (Sigma^2):", sigma_sq_est, "\n")
 cat("95% CI: [", low_ci, ",", high_ci, "]\n")
+# Plot propensity against key covariates
+# If you see regions where p_hat clusters near 0 or 1 -> local failure
+p_hat <- A_hat
+par(mfrow = c(1, 2))
+plot(X$inc, p_hat, pch = 16, cex = 0.3, col = rgb(0,0,0,0.3),
+     xlab = "Income", ylab = expression(hat(e)(L)),
+     main = "Propensity vs income")
+abline(h = c(0.05, 0.95), col = "red", lty = 2)
 
+plot(X$age, p_hat, pch = 16, cex = 0.3, col = rgb(0,0,0,0.3),
+     xlab = "Age", ylab = expression(hat(e)(L)),
+     main = "Propensity vs age")
+abline(h = c(0.05, 0.95), col = "red", lty = 2)
+par(mfrow = c(1, 1))
+
+# Truncate at 0.05/0.95
+p_hat_trunc <- pmax(0.05, pmin(0.95, p_hat))
+
+cat("Proportion truncated:", mean(p_hat < 0.05 | p_hat > 0.95), "\n")
+
+# ── All covariates at once ────────────────────────────────────────────────────
+# Reshape to long format for faceting
+plot_df <- as.data.frame(X)
+plot_df$p_hat_raw   <- p_hat
+plot_df$p_hat_trunc <- p_hat_trunc
+
+plot_long <- plot_df %>%
+  pivot_longer(cols = -c(p_hat_raw, p_hat_trunc),
+               names_to = "covariate", values_to = "value")
+
+# Raw propensity vs all covariates
+ggplot(plot_long, aes(x = value, y = p_hat_raw)) +
+  geom_point(alpha = 0.1, size = 0.3) +
+  geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
+  facet_wrap(~ covariate, scales = "free_x") +
+  labs(title = "Raw propensity vs all covariates",
+       y = expression(hat(e)(L)), x = "Covariate value")
+
+# Truncated propensity vs all covariates
+ggplot(plot_long, aes(x = value, y = p_hat_trunc)) +
+  geom_point(alpha = 0.1, size = 0.3) +
+  geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
+  facet_wrap(~ covariate, scales = "free_x") +
+  labs(title = "Truncated propensity vs all covariates",
+       y = expression(hat(e)(L)), x = "Covariate value")
+
+
+ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
+  geom_point(alpha = 0.1, size = 0.3) +
+  geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
+  labs(title = "Propensity vs income (raw vs truncated)",
+       y = expression(hat(e)(L)), x = "Income") +
+  geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
 The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.
 
