@@ -110,8 +110,28 @@ ggplot(pension, aes(x = age, y = CATE)) +
 hist(pension$CATE, main = "CATE", xlab = "CATE")
 ```
 ```{r, echo = FALSE}
+
+hist(A_hat, main = "Propensity scores")
+A_hat_raw <- A_hat  
+delta <- 0.05
+A_hat[test] <- pmax(delta, pmin(1 - delta, A_hat[test]))
+
+par(mfrow = c(1, 2))
+hist(A_hat_raw, breaks = 50, main = "Raw propensity scores",
+     xlab = "", col = "lightgrey")
+abline(v = c(0.05, 0.95), col = "red", lty = 2)
+
+hist(A_hat, breaks = 50, main = "Truncated propensity scores",
+     xlab = "", col = "lightblue")
+abline(v = c(0.05, 0.95), col = "red", lty = 2)
+par(mfrow = c(1, 1))
+
+cat("Proportion truncated:", mean(A_hat_raw < 0.05 | A_hat_raw > 0.95), "\n")
+#Truncation geen groot probleem dus
+
 hist(Y_X_hat, main = "Expected responses", xlab = "Y")
 hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
+
 ```
 
 ```{r, echo = FALSE}
@@ -194,20 +214,45 @@ In addition, including variables in an analysis can have different effects depen
 - *Years of Education* could be a *common cause*.  
   The more education an individual has, the higher their income tends to be, and the more likely they may be to participate in a 401(k) program.
   
-## Collider DAG example
+% --- COLLIDER ---
 \begin{center}
 \textbf{Collider} \\
 \vspace{0.5cm}
 \begin{tikzpicture}[>=stealth, node distance=2cm, thick]
-    % Nodes
-    \node (A) at (0,2) {Eligibility (A)};
-    \node (Y) at (6,2) {Net Assets (Y)};
-    \node (Z) at (3,0) { (Collider)};
-
-    % Edges
+    \node (A) at (0,2) {Income (A)};
+    \node (Y) at (6,2) {Outcome (Y)};
+    \node (Z) at (3,0) {Collider (Z)};
     \draw[->] (A) -- (Y);
     \draw[->] (A) -- (Z);
     \draw[->] (Y) -- (Z);
+\end{tikzpicture}
+\end{center}
+
+% --- MEDIATOR ---
+\begin{center}
+\textbf{Mediator} \\
+\vspace{0.5cm}
+\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
+    \node (A) at (0,2)  {Income (A)};
+    \node (M) at (3,2)  {Mediator (M)};
+    \node (Y) at (6,2)  {Outcome (Y)};
+    \draw[->] (A) -- (M);
+    \draw[->] (M) -- (Y);
+    \draw[->, bend right=30] (A) to (Y);  % direct effect
+\end{tikzpicture}
+\end{center}
+
+% --- COMMON CAUSE ---
+\begin{center}
+\textbf{Common Cause} \\
+\vspace{0.5cm}
+\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
+    \node (A) at (0,2)  {Income (A)};
+    \node (Y) at (6,2)  {Outcome (Y)};
+    \node (C) at (3,4)  {Common Cause (C)};
+    \draw[->] (A) -- (Y);
+    \draw[->] (C) -- (A);
+    \draw[->] (C) -- (Y);
 \end{tikzpicture}
 \end{center}
 
