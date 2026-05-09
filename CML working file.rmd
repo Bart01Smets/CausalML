@@ -26,7 +26,7 @@ library(ggplot2)
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
 
-set.seed(123)
+set.seed(142)
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
@@ -42,6 +42,7 @@ AX <- pension[, c("e401", "age", "inc", "fsize", "educ",
 K <- 5 # set to 5!
 n <- nrow(X)
 folds <- sample(rep(1:K, length.out = n))
+# eps <- 0.05 # epsilon for truncation of propensity-scores
 
 Y_X_hat <- rep(NA, n)
 Y_AX_hat <- rep(NA, n)
@@ -58,14 +59,31 @@ for (k in 1:K) {
   
   # E[A|X]
   rf_A <- regression_forest(X[train, ], A[train]) # or use probability/classification forest?
-  A_hat[test] <- predict(rf_A, X[test, ])$predictions
-  # truncation propensity scores toevoegen
+  A_hat_temp <- predict(rf_A, X[test, ])$predictions
+  # truncation propensity scores
+  #A_hat[test] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
+  A_hat[test] <- A_hat_temp
   
   # E[Y|A, L] (exercise 3)
   rf_Y_AX <- regression_forest(AX[train, ], Y[train])
   Y_AX_hat[test] <- predict(rf_Y_AX, AX[test, ])$predictions
 }
 ```
+
+```{r, echo = FALSE}
+pension$A_hat <- A_hat
+
+ggplot(pension, aes(x = inc, y = A_hat)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth() +
+  labs(title = "Propensity score vs income")
+```
+
+Zonder truncation of propensity scores
+mean(A_hat < 0.01 | A_hat > 0.99)
+[1] 0
+mean(A_hat < 0.05 | A_hat > 0.95)
+[1] 0.0207766
 
 ```{r, echo = FALSE}
 # 1a) Train Causal Forest
@@ -82,6 +100,53 @@ causal_forest <- causal_forest(X = X, Y = Y, W = A,
 # Extract CATE and variances
 tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
+```
+
+Hieronder CATE benaderen met smoothing spline (lambda=1)
+```{r, echo = FALSE}
+# Smoother
+# spline fit
+fit <- smooth.spline(x = pension$inc,
+                     y = pension$CATE,
+                     lambda = 1)
+
+# voorspellingen op een rooster van x-waarden
+x_grid <- seq(min(pension$inc),
+              max(pension$inc),
+              length.out = 500)
+
+pred <- predict(fit, x = x_grid)
+
+```
+```{r, echo = FALSE}
+# plot
+# dataframe maken voor ggplot
+pred_df <- data.frame(
+  inc = pred$x,
+  CATE = pred$y
+)
+
+# plot
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_line(data = pred_df,
+            aes(x = inc, y = CATE),
+            color = "blue",
+            linewidth = 1.2) +
+  labs(title = "Treatment effect vs income")
+```
+En gewoon met lineaire regressie.
+```{r, echo = FALSE}
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              color = "blue",
+              linewidth = 1.2) +
+  labs(title = "Treatment effect vs income")
+```
+
+```{r, echo = FALSE}
 pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
 
 # 95% betrouwbaarheidsintervallen
@@ -107,6 +172,8 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE", xlab = "CATE")
+hist(Y_X_hat, main = "Expected responses", xlab = "Y")
+hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 ```{r, echo = FALSE}
 
@@ -134,7 +201,7 @@ hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 
 ```{r, echo = FALSE}
-saveRDS(causal_forest, file = "causal_forest_model_ex1_2.rds")
+saveRDS(causal_forest, file = "causal_forest_model_ex1_142_5trunc.rds")
 ```
 
 ```{r, echo = FALSE}
@@ -168,13 +235,21 @@ ATE_sd: 1131.473
 
 ATE - tweede run Causal Forest = 7835.154
 ATE_sd: 1126.654
+
+ATE - 0.5 truncated run Causal Forest = 7944.040
+ATE_sd: 1103.402
 ```{r, echo = FALSE}
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
 
+Tweede run Causal Forest
 ATE_CI_low = 5630.677
 ATE_CI_high = 10066.05
+
+Truncated run Causal Forest
+ATE_CI_low = 5781.372
+ATE_CI_high = 10106.71
 
 ## Non-collapsibility in Non-linear Models
 
@@ -310,8 +385,8 @@ Thus, although the confidence intervals still slightly overlap, still a non-line
 CATEhat<-pension$CATE
 
 ## prop score (P(A=1/L))
-#propscore <- A_hat
-propscore <- pmax(0.01, pmin(0.99, A_hat))
+propscore <- A_hat # propensity scores are already truncated in 1a)
+
 # zonder cross-fitting: prop_score<-causal_forest$W.hat
 
 print(causal_forest)
@@ -410,6 +485,8 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
 ```
 The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.
 
+
+Q4 met DR-learner
 ```{r, echo = FALSE}
 # Q4
 # DR-learner implementation
@@ -418,9 +495,11 @@ The 95% confidence interval still overlaps with 0, so there is no evidence of ef
 # 2) Doubly robust: als 1 van de nuisance paremeters goed geschat is, is het goed
 
 # Reference: solutions of lab Causal Prediction
-# wel nog goed verder te bekijken...
 
-set.seed(123)
+set.seed(142)
+
+n <- nrow(X)
+K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
@@ -430,11 +509,8 @@ A <- pension$e401
 X <- pension[, c("age", "inc", "fsize", "educ", 
                                  "marr", "twoearn", "db", "pira", "hown")]
 AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
-                                 "marr", "twoearn", "db", "pira", "hown")]
+                               "marr", "twoearn", "db", "pira", "hown")]
 
-n <- nrow(X)
-K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
-folds <- sample(rep(1:K, length.out = n))
 eps <- 0.01 # epsilon for truncation of propensity-scores
 
 Y1_hat <- matrix(NA, nrow = n, ncol = K)
@@ -442,6 +518,31 @@ Y0_hat <- matrix(NA, nrow = n, ncol = K)
 A_hat <- matrix(NA, nrow = n, ncol = K)
 C_DR <- matrix(NA, nrow = n, ncol = K)
 CATE <- rep(NA, n)
+```
+
+Q4 met DR-learner
+
+```{r, echo = FALSE}
+# Q4
+# Random folds
+# folds <- sample(rep(1:K, length.out = n))
+
+# Stratified folds
+set.seed(142)
+
+folds <- rep(NA, n)
+
+# indices per klasse
+idx0 <- which(A == 0)
+idx1 <- which(A == 1)
+
+# willekeurig schudden binnen klasse
+idx0 <- sample(idx0)
+idx1 <- sample(idx1)
+
+# evenwichtig verdelen over folds
+folds[idx0] <- rep(1:K, length.out = length(idx0))
+folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
 
 ```{r, echo = FALSE}
@@ -584,10 +685,11 @@ ate_hat <- mean(C_DR_av)
 mean(CATE)
 se_hat  <- sd(C_DR_av) / sqrt(n)
 ```
-
+DR-learner
+1e run
 se_hat
 [1] 1123.617
-mean(EIF)
+mean(pseudooutcomes)
 [1] 7897.361
 mean(CATE)
 [1] 7888.084
@@ -596,10 +698,34 @@ Boven- en ondergrens ATE
 [1] 10099.65
 [1] 5695.072
 
+2e run
+se_hat
+[1] 1167.328
+mean(pseudooutcomes)
+[1] 7878.258
+mean(CATE)
+[1] 7885.001
+
+Boven- en ondergrens ATE
+[1] 10166.22
+[1] 5590.296
+
+Stratified run
+se_hat
+[1] 1142.036
+mean(pseudooutcomes)
+[1] 7888.663
+mean(CATE)
+[1] 7868.564
+
+Boven- en ondergrens ATE
+[1] 10127.05
+[1] 5650.273
+
 ```{r, echo = FALSE}
 # 95% betrouwbaarheidsintervallen
-mean(EIF) + 1.96 * se_hat
-mean(EIF) - 1.96 * se_hat
+ate_hat + 1.96 * se_hat
+ate_hat - 1.96 * se_hat
 ```
 
 ```{r, echo = FALSE}
@@ -609,6 +735,13 @@ hist(CATE, main = "CATE")
 # plot 95% CI's
 pension$CATE <- CATE
 ggplot(pension, aes(x = inc, y = CATE))  +
+  geom_smooth() +
+  labs(title = "Treatment effect vs income")
+```
+
+```{r, echo = FALSE}
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
   geom_smooth() +
   labs(title = "Treatment effect vs income")
 ```
@@ -631,3 +764,160 @@ We estimated the conditional average treatment effect (CATE) of eligibility for 
 Compared to the earlier causal forest approach, the chosen DR-learner introduces an additional modeling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies smoothly and approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically and therefore allow for more flexible nonlinear patterns and interactions. The advantage of using in the final stage a linear model instead of a Causal Forest is improved interpretability and easier visualization of the treatment effect as a function of income.
 
 
+
+Q4 met R-learner
+```{r, echo = FALSE}
+# Q4
+# R-learner implementation
+# Assumptions
+# 1) 
+
+# Reference: solutions of lab Causal Prediction
+
+set.seed(142)
+
+K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
+
+variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
+          "marr", "twoearn", "db", "pira", "hown")
+
+Y <- pension$net_tfa
+A <- pension$e401
+X <- pension[, c("age", "inc", "fsize", "educ", 
+                                 "marr", "twoearn", "db", "pira", "hown")]
+AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
+                               "marr", "twoearn", "db", "pira", "hown")]
+n <- nrow(X)
+eps <- 0.01 # epsilon for truncation of propensity-scores
+
+Yx_hat <- matrix(NA, nrow = n, ncol = K)
+A_hat <- matrix(NA, nrow = n, ncol = K)
+C_R <- matrix(NA, nrow = n, ncol = K)
+W_R <- matrix(NA, nrow = n, ncol = K)
+CATE <- rep(NA, n)
+```
+
+
+Q4 met R-learner
+```{r, echo = FALSE}
+# Q4
+# Random folds
+# folds <- sample(rep(1:K, length.out = n))
+
+# Stratified folds
+folds <- rep(NA, n)
+
+# indices per klasse
+idx0 <- which(A == 0)
+idx1 <- which(A == 1)
+
+# willekeurig schudden binnen klasse
+idx0 <- sample(idx0)
+idx1 <- sample(idx1)
+
+# evenwichtig verdelen over folds
+folds[idx0] <- rep(1:K, length.out = length(idx0))
+folds[idx1] <- rep(1:K, length.out = length(idx1))
+```
+
+```{r, echo = FALSE}
+# Q4
+# R-learner implementation
+# Loop
+
+for (l in 1:K) {
+  
+  k_range <- 1:K
+  k_range <- k_range[k_range != l]
+  
+  for (k in k_range) {
+    train_k <- folds %in% k_range & folds != k
+    test_k <- folds == k
+    
+    # E[Y|X]
+    rf_Yx <- regression_forest(X[train_k, ], Y[train_k])
+    Yx_hat[test_k, l] <- predict(rf_Yx, X[test_k, ])$predictions
+    
+    # E[A|X]
+    rf_A <- regression_forest(X[train_k, ], A[train_k])
+    A_hat_temp <- predict(rf_A, X[test_k, ])$predictions
+    A_hat[test_k, l] <- A_hat_temp
+  }
+  
+  train <- folds != l
+  test <- folds == l
+  
+  # Prevent problems with dividing to zero
+  denom <- A[train] - A_hat[train, l]
+  eps <- 1e-6
+  denom[abs(denom) < eps] <- eps
+
+  # pseudooutcomes C
+  C_R[train, l] <- (Y[train] - Yx_hat[train, l]) / denom
+    
+  # weights for regression of the pseudooutcomes in the combined training data set using weighted linear model
+  W_R[train, l] <- denom^2
+    
+  # training dataframe
+  train_df <- data.frame(
+    C_R = C_R[train, l],
+    W_R = W_R[train, l],
+    inc = X[train, "inc"]
+  )
+  
+  # omit columns with NA values before regression
+  # train_df <- na.omit(train_df)#
+  
+  # Regress the pseudooutcomes in the combined training data set
+  lm_fit <- lm(C_R ~ inc, data = train_df, weights = W_R)
+
+  # test dataframe
+  test_df <- data.frame(
+    inc = X[test, "inc"]
+  )
+
+  # Predict CATE on the test set
+  CATE[test] <- predict(lm_fit, newdata = test_df)
+}
+
+
+```
+
+```{r, echo = FALSE}
+# ATE calculations
+# The ATE should be equal to the mean of the CATE
+mean(CATE)
+se_hat  <- sd(CATE) / sqrt(n)
+```
+
+R-learner 1ste run
+mean(CATE)
+[1] 8049.97
+sd(CATE) / sqrt(n)
+[1] 44.48384
+mean(CATE) + 1.96 * sd(CATE) / sqrt(n)
+[1] 8137.159
+mean(CATE) - 1.96 * sd(CATE) / sqrt(n)
+[1] 7962.782
+
+```{r, echo = FALSE}
+hist(CATE, main = "CATE")
+```
+```{r, echo = FALSE}
+pension$CATE <- CATE
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth() +
+  labs(title = "Treatment effect vs income")
+```
+```{r, echo = FALSE}
+hist(rowSums(Yx_hat, na.rm = TRUE)/(K-1), main = "Expected responses", xlab = "E[Y]")
+hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
+```
+
+```{r, echo = FALSE}
+# Q4
+
+
+
+```
