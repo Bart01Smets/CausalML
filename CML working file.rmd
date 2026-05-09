@@ -414,23 +414,96 @@ term2<-(A/propscore)- ((1-A)/(1-propscore))
 term3<-(Y-Y_AX_hat)
   
 # Combine to get efficient influence function
-EIF<-term1+2*(CATEhat-atehat)*term2*term3
+sigma_sq_hat<-mean(term1+2*(CATEhat-atehat)*term2*term3)
 # estimate sigma^2, mean(EIF)=0 per definition
-sigma_sq_est<-mean(EIF)
-
+IF_sigma<- term1 - sigma_sq_est +2 * (CATEhat - atehat) * term2 * term3
 #get standard error of sigma_sq_est
 # ss = sample size
 ss<-length(EIF)
-sigma_sq_se<- sd(EIF)/sqrt(ss)
+sigma_sq_se<- sd(IF_sigma)/sqrt(ss)
 #get CI
-high_ci<-sigma_sq_est+1.96*sigma_sq_se
-low_ci<-sigma_sq_est-1.96*sigma_sq_se
+high_ci<-sigma_sq_hat+1.96*sigma_sq_se
+low_ci<-sigma_sq_hat-1.96*sigma_sq_se
 
 
-cat("Estimated Variance (Sigma^2):", sigma_sq_est, "\n")
+cat("Estimated Variance (Sigma^2):", sigma_sq_hat, "\n")
 cat("95% CI: [", low_ci, ",", high_ci, "]\n")
-# Plot propensity against key covariates
-# If you see regions where p_hat clusters near 0 or 1 -> local failure
+```
+
+```{r, echo = FALSE}
+#Extreme influence function diagnostics
+summary(IF_sigma)
+
+# Quantiles 
+quantile(abs(IF_sigma), probs = c(0.50, 0.90, 0.95, 0.975, 0.99, 0.995, 1))
+
+# Histogram of influence-function values
+hist(IF_sigma,
+     breaks = 50,
+     main = "Estimated influence function for sigma^2",
+     xlab = "Influence-function value")
+
+# Histogram of absolute influence-function values
+hist(abs(IF_sigma),
+     breaks = 50,
+     main = "Absolute influence-function values",
+     xlab = "|Influence-function value|")
+
+# most influential observations
+abs_IF <- abs(IF_sigma)
+
+top_ids <- order(abs_IF, decreasing = TRUE)[1:20]
+
+top_influential <- pension[top_ids, c(
+  "net_tfa", "e401", "age", "inc", "fsize", "educ",
+  "marr", "twoearn", "db", "pira", "hown"
+)]
+
+top_influential$IF_sigma <- IF_sigma[top_ids]
+top_influential$abs_IF_sigma <- abs_IF[top_ids]
+top_influential$CATE <- CATEhat[top_ids]
+top_influential$ATE <- atehat
+top_influential$CATE_minus_ATE <- CATEhat[top_ids] - atehat
+top_influential$propensity <- propscore[top_ids]
+top_influential$ipw_contrast <- term2[top_ids]
+top_influential$residual <- term3[top_ids]
+
+top_influential <- top_influential[order(-top_influential$abs_IF_sigma), ]
+
+knitr::kable(top_influential, digits = 2)
+diagnostic_components <- data.frame(
+  net_tfa = Y,
+  A = A,
+  CATE = CATEhat,
+  CATE_minus_ATE = CATEhat - atehat,
+  propensity = propscore,
+  ipw_contrast = term2,
+  residual = term3,
+  term1 = term1,
+  correction = 2 * (CATEhat - atehat) * term2 * term3,
+  IF_sigma = IF_sigma,
+  abs_IF_sigma = abs(IF_sigma)
+)
+
+top_components <- diagnostic_components %>%
+  arrange(desc(abs_IF_sigma)) %>%
+  slice(1:20)
+
+knitr::kable(top_components, digits = 2)
+
+summary(pension$net_tfa)
+
+quantile(pension$net_tfa,
+         probs = c(0, 0.5, 0.9, 0.95, 0.99, 0.995, 1))
+
+hist(pension$net_tfa,
+     breaks = 50,
+     main = "Distribution of net financial assets",
+     xlab = "net_tfa")
+
+```
+```{r, echo = FALSE}
+# Propensity against covariates
 p_hat <- A_hat
 par(mfrow = c(1, 2))
 plot(X$inc, p_hat, pch = 16, cex = 0.3, col = rgb(0,0,0,0.3),
@@ -444,13 +517,8 @@ plot(X$age, p_hat, pch = 16, cex = 0.3, col = rgb(0,0,0,0.3),
 abline(h = c(0.05, 0.95), col = "red", lty = 2)
 par(mfrow = c(1, 1))
 
-# Truncate at 0.05/0.95
 p_hat_trunc <- pmax(0.05, pmin(0.95, p_hat))
 
-cat("Proportion truncated:", mean(p_hat < 0.05 | p_hat > 0.95), "\n")
-
-# ── All covariates at once ────────────────────────────────────────────────────
-# Reshape to long format for faceting
 plot_df <- as.data.frame(X)
 plot_df$p_hat_raw   <- p_hat
 plot_df$p_hat_trunc <- p_hat_trunc
@@ -459,7 +527,6 @@ plot_long <- plot_df %>%
   pivot_longer(cols = -c(p_hat_raw, p_hat_trunc),
                names_to = "covariate", values_to = "value")
 
-# Raw propensity vs all covariates
 ggplot(plot_long, aes(x = value, y = p_hat_raw)) +
   geom_point(alpha = 0.1, size = 0.3) +
   geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
@@ -467,7 +534,7 @@ ggplot(plot_long, aes(x = value, y = p_hat_raw)) +
   labs(title = "Raw propensity vs all covariates",
        y = expression(hat(e)(L)), x = "Covariate value")
 
-# Truncated propensity vs all covariates
+
 ggplot(plot_long, aes(x = value, y = p_hat_trunc)) +
   geom_point(alpha = 0.1, size = 0.3) +
   geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
@@ -483,8 +550,183 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
        y = expression(hat(e)(L)), x = "Income") +
   geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
-The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.
+(The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.)
 
+To assess treatment effect heterogeneity, the variance of the CATE was calculated as given in the assignment. This gives us an idea of the extent as to which the impact of 401(k) eligibility on the net amount of financial assets is different across households with different covariate characteristics. If the effect is close to 0, then we would conclude that the treatment effect is homogenous for households characterized by similar covariates.
+
+More formally, we estimated:
+
+\[
+\sigma^2 = Var\{E(Y^1 - Y^0 \mid L)\},
+\]
+
+where \(Y^1\) and \(Y^0\) give the outcomes under treatment (eligibility) and control (non-eligibility), respectively, and \(L\) gives the covariates:
+
+\[
+\tau(L) = E(Y^1 - Y^0 \mid L),
+\]
+
+Thus, we can write:
+
+\[
+\sigma^2 = Var\{\tau(L)\}.
+\]
+
+If
+
+\[
+\psi = E\{\tau(L)\}
+\]
+
+gives the average treatment effect. Then,
+
+\[
+\sigma^2 = E\left[\{\tau(L)-\psi\}^2\right].
+\]
+
+Thus, \(\sigma^2\) measures the variance of the CATE around the ATE. 
+
+Normally, we would just compute the variance around the CATE's. However, CATEs are estimated and therefore, this could lead to incorrect inference. Therefore, the efficient influence function for \(\sigma^2\) is used, denoted by:
+
+\[
+\begin{aligned}
+\phi(O) 
+=& \{\tau(L)-\psi\}^2 - \sigma^2 \\
+&+ 2\{\tau(L)-\psi\}
+\left\{
+\frac{A}{P(A=1\mid L)}
+-
+\frac{1-A}{P(A=0\mid L)}
+\right\}
+\{Y - E(Y\mid A,L)\}.
+\end{aligned}
+\]
+
+The efficient influence function has mean zero at the true value of the parameter, meaning that
+
+\[
+E\{\phi(O)\}=0.
+\]
+
+This property can be used to construct an estimator for \(\sigma^2\). In practice, we replace the unknown nuisance functions by estimates and solve the empirical analogue of this mean-zero condition:
+
+\[
+\frac{1}{n}\sum_{i=1}^{n}\hat{\phi}_i = 0.
+\]
+
+Starting from the efficient influence function, this means solving
+
+\[
+\frac{1}{n}\sum_{i=1}^{n}
+\left[
+\{\hat{\tau}(L_i)-\hat{\psi}\}^2 - \hat{\sigma}^2
++
+2\{\hat{\tau}(L_i)-\hat{\psi}\}
+\left\{
+\frac{A_i}{\hat{p}(L_i)}
+-
+\frac{1-A_i}{1-\hat{p}(L_i)}
+\right\}
+\{Y_i-\hat{m}(A_i,L_i)\}
+\right]
+=0.
+\]
+
+
+
+We replace the (unknown) nuisance functions by empirical estimates
+
+\[
+\hat{\tau}(L_i)
+\]
+
+for the estimated CATE from the causal forest,
+
+\[
+\hat{\psi}
+\]
+
+for the estimated average treatment effect,
+
+\[
+\hat{p}(L_i) = \hat{P}(A_i=1\mid L_i)
+\]
+
+for the estimated propensity score,
+
+\[
+\hat{m}(A_i,L_i) = \hat{E}(Y_i\mid A_i,L_i)
+\]
+
+for the estimated outcome regression.
+
+This gives the following debiased estimator:
+
+\[
+\hat{\sigma}^2 =
+\frac{1}{n}\sum_{i=1}^{n}
+\left[
+\{\hat{\tau}(L_i)-\hat{\psi}\}^2
++
+2\{\hat{\tau}(L_i)-\hat{\psi}\}
+\left\{
+\frac{A_i}{\hat{p}(L_i)}
+-
+\frac{1-A_i}{1-\hat{p}(L_i)}
+\right\}
+\{Y_i-\hat{m}(A_i,L_i)\}
+\right].
+\]
+
+The first term,
+
+\[
+\{\hat{\tau}(L_i)-\hat{\psi}\}^2,
+\]
+
+gives the estimated variation in the CATE around the ATE. The second term is a debiasing correction based on the residuals from the outcome regression and inverse probability weighting. This correction accounts for potential misspecification in the nuisance functions.
+
+Then, we estimated the influence-function values as
+
+\[
+\begin{aligned}
+\hat{\phi}_i 
+=& \{\hat{\tau}(L_i)-\hat{\psi}\}^2 - \hat{\sigma}^2 \\
+&+ 2\{\hat{\tau}(L_i)-\hat{\psi}\}
+\left\{
+\frac{A_i}{\hat{p}(L_i)}
+-
+\frac{1-A_i}{1-\hat{p}(L_i)}
+\right\}
+\{Y_i-\hat{m}(A_i,L_i)\}.
+\end{aligned}
+\]
+
+The standard error is estimated as:
+
+\[
+\widehat{SE}(\hat{\sigma}^2)
+=
+\frac{sd(\hat{\phi}_i)}{\sqrt{n}},
+\]
+
+and a 95% confidence interval was constructed as
+
+\[
+\hat{\sigma}^2
+\pm
+1.96 \times \widehat{SE}(\hat{\sigma}^2).
+\]
+
+Ultimately, we inspected the estimated influence-function values and the inverse probability weights as diagnostics, to see if our estimates and CI's were driven by those.
+
+#Main conclusion
+
+Our estimate is negative, approximately −6.68×10^6. As σ^2 denotes the variance, this cannot be negative. However, the debiased estimator is not constrained to be non-negative in finite samples, so a negative estimate can happen if the heterogeneity is small relative to the sampling variability. The 95% confidence interval includes 0, and this thus means that we cannot concldue that there is significant heterogeneity in the impact of being eligible for 401(k) schemes for different households.
+
+As our estimates are rather large, we also took a deeper look at the values for the efficient influence functions. This check indicated that certain observations had large absolute influence function values. More specifically, these values are mostly driven by households with a high amount of net financial assets (and thus large residuals). We further investigated whether the propensity scores of these observations were close to 0 or 1, and this was not the case. Thus, these values were caused by the very large residual values caused by the right-skewed distribution, not by the propensity scores.
+
+Overall, as the confidence intervals overlap with 0, we cannot conclude treatment effect heterogeneity. However, as these confidence intervals remain very broad, it is also difficult to conclude that there is no heterogeneity. Therefore, it is difficult to take conclusions, as inference is impacted by specific high-asset households.
 
 Q4 met DR-learner
 ```{r, echo = FALSE}
