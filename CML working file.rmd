@@ -26,7 +26,7 @@ library(ggplot2)
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
 
-set.seed(123)
+set.seed(142)
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
@@ -42,6 +42,7 @@ AX <- pension[, c("e401", "age", "inc", "fsize", "educ",
 K <- 5 # set to 5!
 n <- nrow(X)
 folds <- sample(rep(1:K, length.out = n))
+eps <- 0.01 # epsilon for truncation of propensity-scores
 
 Y_X_hat <- rep(NA, n)
 Y_AX_hat <- rep(NA, n)
@@ -60,13 +61,20 @@ for (k in 1:K) {
   rf_A <- regression_forest(X[train, ], A[train]) # or use probability/classification forest?
   A_hat_temp <- predict(rf_A, X[test, ])$predictions
   # truncation propensity scores
-  A_hat[test] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
+  # A_hat[test] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
+  A_hat[test] <- A_hat_temp
   
   # E[Y|A, L] (exercise 3)
   rf_Y_AX <- regression_forest(AX[train, ], Y[train])
   Y_AX_hat[test] <- predict(rf_Y_AX, AX[test, ])$predictions
 }
 ```
+
+Zonder truncation of propensity scores
+mean(A_hat < 0.01 | A_hat > 0.99)
+[1] 0
+mean(A_hat < 0.05 | A_hat > 0.95)
+[1] 0.0207766
 
 ```{r, echo = FALSE}
 # 1a) Train Causal Forest
@@ -311,8 +319,8 @@ Thus, although the confidence intervals still slightly overlap, still a non-line
 CATEhat<-pension$CATE
 
 ## prop score (P(A=1/L))
-#propscore <- A_hat
-propscore <- pmax(0.01, pmin(0.99, A_hat))
+propscore <- A_hat # propensity scores are already truncated in 1a)
+
 # zonder cross-fitting: prop_score<-causal_forest$W.hat
 
 print(causal_forest)
