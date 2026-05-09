@@ -42,7 +42,7 @@ AX <- pension[, c("e401", "age", "inc", "fsize", "educ",
 K <- 5 # set to 5!
 n <- nrow(X)
 folds <- sample(rep(1:K, length.out = n))
-eps <- 0.01 # epsilon for truncation of propensity-scores
+eps <- 0.05 # epsilon for truncation of propensity-scores
 
 Y_X_hat <- rep(NA, n)
 Y_AX_hat <- rep(NA, n)
@@ -61,8 +61,8 @@ for (k in 1:K) {
   rf_A <- regression_forest(X[train, ], A[train]) # or use probability/classification forest?
   A_hat_temp <- predict(rf_A, X[test, ])$predictions
   # truncation propensity scores
-  # A_hat[test] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
-  A_hat[test] <- A_hat_temp
+  A_hat[test] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
+  # A_hat[test] <- A_hat_temp
   
   # E[Y|A, L] (exercise 3)
   rf_Y_AX <- regression_forest(AX[train, ], Y[train])
@@ -91,6 +91,53 @@ causal_forest <- causal_forest(X = X, Y = Y, W = A,
 # Extract CATE and variances
 tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
+```
+
+Hieronder CATE benaderen met smoothing spline (lambda=1)
+```{r, echo = FALSE}
+# Smoother
+# spline fit
+fit <- smooth.spline(x = pension$inc,
+                     y = pension$CATE,
+                     lambda = 1)
+
+# voorspellingen op een rooster van x-waarden
+x_grid <- seq(min(pension$inc),
+              max(pension$inc),
+              length.out = 500)
+
+pred <- predict(fit, x = x_grid)
+
+```
+```{r, echo = FALSE}
+# plot
+# dataframe maken voor ggplot
+pred_df <- data.frame(
+  inc = pred$x,
+  CATE = pred$y
+)
+
+# plot
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_line(data = pred_df,
+            aes(x = inc, y = CATE),
+            color = "blue",
+            linewidth = 1.2) +
+  labs(title = "Treatment effect vs income")
+```
+En gewoon met lineaire regressie.
+```{r, echo = FALSE}
+ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              color = "blue",
+              linewidth = 1.2) +
+  labs(title = "Treatment effect vs income")
+```
+
+```{r, echo = FALSE}
 pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
 
 # 95% betrouwbaarheidsintervallen
@@ -116,6 +163,8 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE", xlab = "CATE")
+hist(Y_X_hat, main = "Expected responses", xlab = "Y")
+hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 ```{r, echo = FALSE}
 
@@ -143,7 +192,7 @@ hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 
 ```{r, echo = FALSE}
-saveRDS(causal_forest, file = "causal_forest_model_ex1_2.rds")
+saveRDS(causal_forest, file = "causal_forest_model_ex1_142_5trunc.rds")
 ```
 
 ```{r, echo = FALSE}
@@ -177,13 +226,21 @@ ATE_sd: 1131.473
 
 ATE - tweede run Causal Forest = 7835.154
 ATE_sd: 1126.654
+
+ATE - 0.5 truncated run Causal Forest = 7944.040
+ATE_sd: 1103.402
 ```{r, echo = FALSE}
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
 
+Tweede run Causal Forest
 ATE_CI_low = 5630.677
 ATE_CI_high = 10066.05
+
+Truncated run Causal Forest
+ATE_CI_low = 5781.372
+ATE_CI_high = 10106.71
 
 ## Non-collapsibility in Non-linear Models
 
