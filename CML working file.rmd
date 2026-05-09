@@ -53,12 +53,12 @@ for (k in 1:K) {
   train <- which(folds != k)
   test  <- which(folds == k)
   
-  # E[Y|X]
+  # E[Y|X] met regression forests
   rf_Y_X <- regression_forest(X[train, ], Y[train])
   Y_X_hat[test] <- predict(rf_Y_X, X[test, ])$predictions
   
   # E[A|X]
-  rf_A <- regression_forest(X[train, ], A[train]) # or use probability/classification forest?
+  rf_A <- regression_forest(X[train, ], A[train])
   A_hat_temp <- predict(rf_A, X[test, ])$predictions
   # truncation propensity scores
   #A_hat[test] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
@@ -84,6 +84,12 @@ mean(A_hat < 0.01 | A_hat > 0.99)
 [1] 0
 mean(A_hat < 0.05 | A_hat > 0.95)
 [1] 0.0207766
+
+Met Probability Forest
+mean(A_hat < 0.01 | A_hat > 0.99)
+[1] 0.0002017146
+mean(A_hat < 0.05 | A_hat > 0.95)
+[1] 0.03005547
 
 ```{r, echo = FALSE}
 # 1a) Train Causal Forest
@@ -236,7 +242,10 @@ ATE_sd: 1131.473
 ATE - tweede run Causal Forest = 7835.154
 ATE_sd: 1126.654
 
-ATE - 0.5 truncated run Causal Forest = 7944.040
+ATE - 0.5 truncated run Causal Forest = 7779.224
+ATE_sd: 1103.402
+
+ATE - Causal Forest with Prob Forest = 1108.542
 ATE_sd: 1103.402
 ```{r, echo = FALSE}
 ci_low  <- ate[1] - 1.96 * ate[2]
@@ -250,6 +259,9 @@ ATE_CI_high = 10066.05
 Truncated run Causal Forest
 ATE_CI_low = 5781.372
 ATE_CI_high = 10106.71
+
+Met Probability Forests
+5606.482 9951.966
 
 ## Non-collapsibility in Non-linear Models
 
