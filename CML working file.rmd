@@ -59,16 +59,18 @@ for (k in 1:K) {
   
   # E[A|X]
   rf_A <- regression_forest(X[train, ], A[train])
-  A_hat_temp <- predict(rf_A, X[test, ])$predictions
+  A_hat[test] <- predict(rf_A, X[test, ])$predictions
   # truncation propensity scores
   #A_hat[test] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
-  A_hat[test] <- A_hat_temp
+  #A_hat[test] <- A_hat_temp
   
   # E[Y|A, L] (exercise 3)
-  rf_Y_AX <- regression_forest(AX[train, ], Y[train])
-  Y_AX_hat[test] <- predict(rf_Y_AX, AX[test, ])$predictions
+  #rf_Y_AX <- regression_forest(AX[train, ], Y[train])
+  #Y_AX_hat[test] <- predict(rf_Y_AX, AX[test, ])$predictions
 }
 ```
+
+
 
 ```{r, echo = FALSE}
 pension$A_hat <- A_hat
@@ -79,17 +81,26 @@ ggplot(pension, aes(x = inc, y = A_hat)) +
   labs(title = "Propensity score vs income")
 ```
 
+The causal forest analysis reveals a substantial and statistically significant effect of eligibility for enrollment in a 401(k) plan on accumulated net financial assets. The estimated Average Treatment Effect (ATE) equals 7,892.037, indicating that individuals who are eligible for a 401(k) plan accumulate, on average, approximately \$7,892.037 more in net financial assets than non-eligible individuals. The estimated standard error is \$1,106.29, resulting in a 95% confidence interval of [\$5,723.7, \$10,060.38].
+
+In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals. Figure ... presents a histogram of the predicted CATE values. Furthermore, the estimated CATE was plotted against income, revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. To better characterize this relationship, both a linear regression model and a smoothing spline regression (with \lambda = 1) were fitted. The corresponding trends are displayed in Figures ... and .... While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
+
+To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram. No propensity scores below 0.01 or above 0.99 were observed, and only 2.2% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed. This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate.
+
+
+
 Zonder truncation of propensity scores
 mean(A_hat < 0.01 | A_hat > 0.99)
 [1] 0
 mean(A_hat < 0.05 | A_hat > 0.95)
-[1] 0.0207766
+[1] 0.02158346
 
-Met Probability Forest
-mean(A_hat < 0.01 | A_hat > 0.99)
-[1] 0.0002017146
-mean(A_hat < 0.05 | A_hat > 0.95)
-[1] 0.03005547
+ATE - Causal Forest = 7892.037
+ATE_sd: 1106.29
+
+ATE_CI_low = 5723.7
+ATE_CI_high = 10060.38
+
 
 ```{r, echo = FALSE}
 # 1a) Train Causal Forest
@@ -163,17 +174,18 @@ pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
 ```{r, echo = FALSE}
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
+  geom_point(alpha = 0.2) +
   geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
   labs(title = "Treatment effect vs income (with uncertainty)")
 ```
-
 
 ```{r, echo = FALSE}
 # plot 95% CI's
-ggplot(pension, aes(x = age, y = CATE)) +
+ggplot(pension, aes(x = inc, y = CATE)) +
   geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
   labs(title = "Treatment effect vs income (with uncertainty)")
 ```
+
 
 
 ```{r, echo = FALSE}
@@ -207,7 +219,7 @@ hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 
 ```{r, echo = FALSE}
-saveRDS(causal_forest, file = "causal_forest_model_ex1_142_5trunc.rds")
+saveRDS(causal_forest, file = "causal_forest_model_ex1_142_20260509final.rds")
 ```
 
 ```{r, echo = FALSE}
@@ -236,32 +248,13 @@ ate <- average_treatment_effect(causal_forest,
 
 ate
 ```
-ATE - eerste run Causal Forest = 7848.365
-ATE_sd: 1131.473
 
-ATE - tweede run Causal Forest = 7835.154
-ATE_sd: 1126.654
-
-ATE - 0.5 truncated run Causal Forest = 7779.224
-ATE_sd: 1103.402
-
-ATE - Causal Forest with Prob Forest = 1108.542
-ATE_sd: 1103.402
 ```{r, echo = FALSE}
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
 
-Tweede run Causal Forest
-ATE_CI_low = 5630.677
-ATE_CI_high = 10066.05
 
-Truncated run Causal Forest
-ATE_CI_low = 5781.372
-ATE_CI_high = 10106.71
-
-Met Probability Forests
-5606.482 9951.966
 
 ## Non-collapsibility in Non-linear Models
 
@@ -609,31 +602,6 @@ labs(title = "Treatment effect vs income")
 
 ```
 
-```{r, echo = FALSE}
-l <- 3
-train <- folds != l
-test <- folds == l
-
-# training dataframe
-train_df <- data.frame(
-  C_DR = C_DR[train, l],
-  inc = X[train, "inc"]
-)
-
-# omit columns with NA values before regression
-# train_df <- na.omit(train_df)
-
-# Plot
-ggplot(train_df, aes(x = inc, y = C_DR)) +
-geom_point(alpha = 0.2) +
-geom_smooth(method = "lm") +
-coord_cartesian(ylim = c(0, 60000)) +
-labs(title = "Treatment effect vs income")
-
-```
-
-
-
 
 ```{r, echo = FALSE}
 # ATE calculations
@@ -829,7 +797,7 @@ for (l in 1:K) {
   # train_df <- na.omit(train_df)#
   
   # Regress the pseudooutcomes in the combined training data set
-  lm_fit <- lm(C_R ~ inc, data = train_df, weights = W_R)
+  lm_fit <- lm(C_R ~ inc, data = train_df, weights = W_R, na.action = na.fail)
 
   # test dataframe
   test_df <- data.frame(
@@ -876,8 +844,12 @@ hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Pro
 ```
 
 ```{r, echo = FALSE}
-# Q4
-
-
-
+# Q4 Testen for extreme Propensity scores
+A_hat_vector <- rowSums(A_hat, na.rm = TRUE)/(K-1)
+mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
+mean(A_hat_vector < 0.05 | A_hat_vector > 0.95)
 ```
+mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
+[1] 0
+mean(A_hat_vector < 0.05 | A_hat_vector > 0.95)
+[1] 0.008976299
