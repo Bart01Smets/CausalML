@@ -263,6 +263,13 @@ ATE_CI_high = 10106.71
 Met Probability Forests
 5606.482 9951.966
 
+#1a) interpretation
+
+Using causal forests with cross-fitting (5 folds), we find the average treatment effect to be approximately: , with a confidence interval ranging from and . Because the confidence interval is positive and larger than 0, we conclude that being eligible for the 401(k) has a significant and positive effect on the net financial assets of a perosn.
+
+In terms of heterogeneity, we find that the treatment effect is not uniform across the population. There is a large, non-linear relationship, as richer individuals have a larger increase in net financial assets when becoming eligible for 401(k) than poorer individuals. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
+
+#1b)
 ## Non-collapsibility in Non-linear Models
 
 First, it is important to note that adding variables to non-linear models generally leads to changes in coefficients, even in the absence of confounding. This phenomenon is known as *non-collapsibility*: marginal and conditional effect measures differ even in the absence of confounding.
