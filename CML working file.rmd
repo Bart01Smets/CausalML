@@ -65,8 +65,8 @@ for (k in 1:K) {
   #A_hat[test] <- A_hat_temp
   
   # E[Y|A, L] (exercise 3)
-  #rf_Y_AX <- regression_forest(AX[train, ], Y[train])
-  #Y_AX_hat[test] <- predict(rf_Y_AX, AX[test, ])$predictions
+  rf_Y_AX <- regression_forest(AX[train, ], Y[train])
+  Y_AX_hat[test] <- predict(rf_Y_AX, AX[test, ])$predictions
 }
 ```
 
@@ -437,7 +437,7 @@ term3<-(Y-Y_AX_hat)
 # Combine to get efficient influence function
 sigma_sq_hat<-mean(term1+2*(CATEhat-atehat)*term2*term3)
 # estimate sigma^2, mean(EIF)=0 per definition
-IF_sigma<- term1 - sigma_sq_est +2 * (CATEhat - atehat) * term2 * term3
+IF_sigma<- term1 - sigma_sq_hat +2 * (CATEhat - atehat) * term2 * term3
 #get standard error of sigma_sq_est
 # ss = sample size
 ss<-length(EIF)
@@ -450,6 +450,18 @@ low_ci<-sigma_sq_hat-1.96*sigma_sq_se
 cat("Estimated Variance (Sigma^2):", sigma_sq_hat, "\n")
 cat("95% CI: [", low_ci, ",", high_ci, "]\n")
 ```
+
+sigma_sq_hat
+16169595
+sigma_sq_se
+41439971
+sigma_sq_hat+1.96*sigma_sq_se
+[1] 97391939
+sigma_sq_hat-1.96*sigma_sq_se
+[1] -65052749
+
+
+
 
 ```{r, echo = FALSE}
 #Extreme influence function diagnostics
