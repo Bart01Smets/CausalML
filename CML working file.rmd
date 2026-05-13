@@ -263,10 +263,7 @@ To better characterize this relationship, both a linear regression model and a s
 
 To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram. No propensity scores below 0.01 or above 0.99 were observed, and only 2.2% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed. This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate. This can be viewed as an example of the bias--variance trade-off. Although trimming extreme propensity scores can reduce the variance of the estimator by limiting the influence of highly weighted observations, it may simultaneously introduce additional bias by systematically excluding specific subpopulations from the analysis.
 
-To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (Tibshirani et al., 2024).
-
-Reference: https://grf-labs.github.io/grf/reference/causal_forest.html
-
+To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (https://grf-labs.github.io/grf/reference/causal_forest.html).
 
 
 Nog stukje Bart
