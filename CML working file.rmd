@@ -2,7 +2,9 @@
 title: "Causal Machine Learning assignment"
 author: "Thomas Sertijn, Bart Smets, Ilja Van Bever"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: 
+pdf_document:
+  latex_engine: xelatex
 header-includes:
   - \usepackage{tikz}
 ---
@@ -25,8 +27,6 @@ library(ggplot2)
 # Reference doc:
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
-
-set.seed(142)
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
