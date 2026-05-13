@@ -24,9 +24,6 @@ data(pension)
 library(ggdag)
 library(ggplot2)
 ```
-```{r, set.seed(123)}
-knitr::opts_chunk$set(cache = T)
-```
 
 ```{r, echo = FALSE}
 # Cross-fitting
