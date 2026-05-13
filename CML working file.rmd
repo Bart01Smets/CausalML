@@ -2,7 +2,9 @@
 title: "Causal Machine Learning assignment"
 author: "Thomas Sertijn, Bart Smets, Ilja Van Bever"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: 
+pdf_document:
+  latex_engine: xelatex
 header-includes:
   - \usepackage{tikz}
 editor_options: 
@@ -22,15 +24,16 @@ data(pension)
 library(ggdag)
 library(ggplot2)
 ```
+```{r, set.seed(123)}
+knitr::opts_chunk$set(cache = T)
+```
 
 ```{r, echo = FALSE}
 # Cross-fitting
-
+set.seed(123456789)
 # Reference doc:
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
-
-set.seed(142)
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
@@ -83,7 +86,7 @@ ggplot(pension, aes(x = inc, y = A_hat)) +
   labs(title = "Propensity score vs income")
 ```
 
-Zonder truncation of propensity scores mean(A_hat \< 0.01 \| A_hat \>
+Without truncation of propensity scores mean(A_hat \< 0.01 \| A_hat \>
 0.99) [1] 0 mean(A_hat \< 0.05 \| A_hat \> 0.95) [1] 0.02158346
 
 ATE - Causal Forest = 7892.037 ATE_sd: 1106.29
@@ -91,17 +94,18 @@ ATE - Causal Forest = 7892.037 ATE_sd: 1106.29
 ATE_CI_low = 5723.7 ATE_CI_high = 10060.38
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # 1a) Train Causal Forest
 causal_forest <- causal_forest(X = X, Y = Y, W = A,
   Y.hat = Y_X_hat,
   W.hat = A_hat,
   num.trees = 2000,
-  min.node.size = 5,
-  seed = 123
+  min.node.size = 5
 )
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Extract CATE and variances
 tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
@@ -189,10 +193,10 @@ A_hat_raw <- A_hat
 ```
 
 ```{r, echo = FALSE}
-
+set.seed(123456789)
 hist(A_hat, main = "Propensity scores")
 delta <- 0.05
-A_hat[test] <- pmax(delta, pmin(1 - delta, A_hat[test]))
+A_hat <- pmax(delta, pmin(1 - delta, A_hat))
 
 par(mfrow = c(1, 2))
 hist(A_hat_raw, breaks = 50, main = "Raw propensity scores",
@@ -217,10 +221,6 @@ saveRDS(causal_forest, file = "causal_forest_model_ex1_142_20260509final.rds")
 ```
 
 ```{r, echo = FALSE}
-causal_forest2 <- readRDS("causal_forest_model_ex1.rds")
-```
-
-```{r, echo = FALSE}
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -237,6 +237,7 @@ ggplot(pension, aes(x = age, y = CATE)) +
 Determining the ATE and his confidence interval.
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
                                method = "AIPW")
@@ -247,6 +248,8 @@ ate
 ```{r, echo = FALSE}
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
+print(ci_low)
+print(ci_high)
 ```
 
 #1a) interpretation
@@ -270,7 +273,7 @@ does have a positive impact on financial assets, but mainly so for
 richer individuals.
 
 To better characterize this relationship, both a linear regression model
-and a smoothing spline regression (with \lambda = 1) were fitted. The
+and a smoothing spline regression (with $\lambda$ = 1) were fitted. The
 corresponding trends are displayed in Figures ... and .... While the
 estimated curves differ somewhat at higher income levels, this part of
 the income distribution contains relatively few observations, implying
@@ -423,7 +426,7 @@ effects depending on their position in the causal diagram.
 \end{center}
 
 ```{r, echo = FALSE}
-
+set.seed(123456789)
 #Q2
 pension$quartiles <- ntile(pension$CATE, 4)
 
@@ -481,7 +484,7 @@ mechanism is effective.
 
 ```{r, echo = FALSE}
 #Q3
-
+set.seed(123456789)
 ## CATE predictions (E(Y1-Y0)/L)
 CATEhat<-pension$CATE
 
@@ -535,6 +538,7 @@ sigma_sq_hat 16169595 sigma_sq_se 41439971 sigma_sq_hat+1.96*sigma_sq_se
 [1] 97391939 sigma_sq_hat-1.96*sigma_sq_se [1] -65052749
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 #Extreme influence function diagnostics
 summary(IF_sigma)
 
@@ -608,6 +612,7 @@ hist(pension$net_tfa,
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Propensity against covariates
 p_hat <- A_hat
 par(mfrow = c(1, 2))
@@ -844,7 +849,7 @@ Ultimately, we inspected the estimated influence-function values and the
 inverse probability weights as diagnostics, to see if our estimates and
 CI's were driven by those.
 
-#Main conclusion
+# Main conclusion
 
 Our estimate is negative, approximately −6.68×10\^6. As σ\^2 denotes the
 variance, this cannot be negative. However, the debiased estimator is
@@ -874,6 +879,7 @@ inference is impacted by specific high-asset households.
 Q4 met DR-learner
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # DR-learner implementation
 # Assumptions
@@ -881,8 +887,6 @@ Q4 met DR-learner
 # 2) Doubly robust: als 1 van de nuisance paremeters goed geschat is, is het goed
 
 # Reference: solutions of lab Causal Prediction
-
-set.seed(142)
 
 n <- nrow(X)
 K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
@@ -897,7 +901,7 @@ X <- pension[, c("age", "inc", "fsize", "educ",
 AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
                                "marr", "twoearn", "db", "pira", "hown")]
 
-eps <- 0.01 # epsilon for truncation of propensity-scores
+eps <- 1e-6 # epsilon for truncation of propensity-scores
 
 Y1_hat <- matrix(NA, nrow = n, ncol = K)
 Y0_hat <- matrix(NA, nrow = n, ncol = K)
@@ -909,12 +913,12 @@ CATE <- rep(NA, n)
 Q4 met DR-learner
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # Random folds
 # folds <- sample(rep(1:K, length.out = n))
 
 # Stratified folds
-set.seed(142)
 
 folds <- rep(NA, n)
 
@@ -935,7 +939,7 @@ folds[idx1] <- rep(1:K, length.out = length(idx1))
 # Q4
 # DR-learner implementation
 # Loop
-
+set.seed(123456789)
 for (l in 1:K) {
   
   k_range <- 1:K
@@ -991,6 +995,7 @@ for (l in 1:K) {
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 l <- 1
 train <- folds != l
 test <- folds == l
@@ -1014,6 +1019,7 @@ labs(title = "Treatment effect vs income")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 l <- 2
 train <- folds != l
 test <- folds == l
@@ -1037,6 +1043,7 @@ labs(title = "Treatment effect vs income")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # ATE calculations
 # ATE
 C_DR_av <- rowSums(C_DR, na.rm = TRUE)/(K-1)
@@ -1057,7 +1064,7 @@ Boven- en ondergrens ATE [1] 10099.65 [1] 5695.072
 
 Boven- en ondergrens ATE [1] 10166.22 [1] 5590.296
 
-Stratified run se_hat [1] 1142.036 mean(pseudooutcomes) [1] 7888.663
+Stratified run se_hat [1] 1142.036 mean(pseudoou = tcomes) [1] 7888.663
 mean(CATE) [1] 7868.564
 
 Boven- en ondergrens ATE [1] 10127.05 [1] 5650.273
@@ -1122,14 +1129,13 @@ effect as a function of income.
 Q4 met R-learner
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # R-learner implementation
 # Assumptions
 # 1) 
 
 # Reference: solutions of lab Causal Prediction
-
-set.seed(142)
 
 K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
 
@@ -1143,7 +1149,7 @@ X <- pension[, c("age", "inc", "fsize", "educ",
 AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
                                "marr", "twoearn", "db", "pira", "hown")]
 n <- nrow(X)
-eps <- 0.01 # epsilon for truncation of propensity-scores
+eps <- 1e-6 # epsilon for truncation of propensity-scores
 
 Yx_hat <- matrix(NA, nrow = n, ncol = K)
 A_hat <- matrix(NA, nrow = n, ncol = K)
@@ -1155,6 +1161,7 @@ CATE <- rep(NA, n)
 Q4 met R-learner
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # Random folds
 # folds <- sample(rep(1:K, length.out = n))
@@ -1176,6 +1183,7 @@ folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # R-learner implementation
 # Loop
