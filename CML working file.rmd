@@ -26,7 +26,7 @@ library(ggplot2)
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
 
-set.seed(142)
+set.seed(123456789)
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
@@ -97,15 +97,14 @@ ATE_sd: 1106.29
 ATE_CI_low = 5723.7
 ATE_CI_high = 10060.38
 
-
 ```{r, echo = FALSE}
 # 1a) Train Causal Forest
 causal_forest <- causal_forest(X = X, Y = Y, W = A,
   Y.hat = Y_X_hat,
   W.hat = A_hat,
   num.trees = 2000,
-  min.node.size = 5,
-  seed = 123
+  min.node.size = 5#,
+  #seed = 123
 )
 ```
 
@@ -131,6 +130,7 @@ x_grid <- seq(min(pension$inc),
 pred <- predict(fit, x = x_grid)
 
 ```
+
 ```{r, echo = FALSE}
 # plot
 # dataframe maken voor ggplot
@@ -189,6 +189,7 @@ hist(pension$CATE, main = "CATE", xlab = "CATE")
 hist(Y_X_hat, main = "Expected responses", xlab = "Y")
 hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
+
 ```{r, echo = FALSE}
 
 hist(A_hat, main = "Propensity scores")
@@ -274,22 +275,22 @@ In terms of heterogeneity, we find that the treatment effect is not uniform acro
 #1b)
 ## Non-collapsibility in Non-linear Models
 
-First, it is important to note that adding variables to non-linear models generally leads to changes in coefficients, even in the absence of confounding. This phenomenon is known as *non-collapsibility*: marginal and conditional effect measures differ even in the absence of confounding.
+<!-- First, it is important to note that adding variables to non-linear models generally leads to changes in coefficients, even in the absence of confounding. This phenomenon is known as *non-collapsibility*: marginal and conditional effect measures differ even in the absence of confounding. -->
 
 ## Role of Additional Variables in a Causal Diagram
 
 In addition, including variables in an analysis can have different effects depending on their position in the causal diagram.
 
 - *Collider*  
-  In the case of a collider *(Income → Collider ← Outcome)*, conditioning on this variable introduces collider bias.  
+  In the case of a collider *(Eligibility → Collider ← Outcome)*, conditioning on this variable introduces collider bias.  
   Conditioning on a collider opens a backdoor pathway, making the estimated effect of income biased and very difficult to interpret.
 
 - *Mediator*  
-  In the case of a mediator *(Income → Mediator → Outcome)*, part of the effect of income is captured through an indirect effect (via the mediator), and part through a direct effect (the effect observed directly).  
+  In the case of a mediator *(Eligibility → Mediator → Outcome)*, part of the effect of income is captured through an indirect effect (via the mediator), and part through a direct effect (the effect observed directly).  
   Including a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect, but only the direct effect.
 
 - *Common Cause*  
-  In the case of a common cause *(Income ← Common Cause → Outcome)*, it is appropriate to include this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of income not credible. We note that conditional exchangeability given only income does not hold if there exist common causes of income and the outcome that are not controlled for.
+  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is appropriate to include this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of income not credible. We note that conditional exchangeability given only income does not hold if there exist common causes of income and the outcome that are not controlled for.
 
 - *Variable Affecting Only Income*  
   If a variable only affects income, including it in the analysis does not introduce bias.  
@@ -387,20 +388,80 @@ sd_4   <- Q4_ATE["std.err"]
 Low_CI_4  <- coef_4 - (1.96 * sd_4)
 High_CI_4 <- coef_4 + (1.96 * sd_4)
 
+coef_1
+Low_CI_1
+High_CI_1
+
+coef_2
+Low_CI_2
+High_CI_2
+
+coef_3
+Low_CI_3
+High_CI_3
+
 coef_4
 Low_CI_4
 High_CI_4
 
+coef_1
+coef_2
+coef_3
+coef_4
+
+cat("ATE estimates by predicted CATE quartile:\n\n")
+
+cat("Q1 (lowest predicted CATE): ",
+    round(coef_1, 2),
+    " [", round(Low_CI_1, 2), ", ", round(High_CI_1, 2), "]\n", sep = "")
+
+cat("Q2: ",
+    round(coef_2, 2),
+    " [", round(Low_CI_2, 2), ", ", round(High_CI_2, 2), "]\n", sep = "")
+
+cat("Q3: ",
+    round(coef_3, 2),
+    " [", round(Low_CI_3, 2), ", ", round(High_CI_3, 2), "]\n", sep = "")
+
+cat("Q4 (highest predicted CATE): ",
+    round(coef_4, 2),
+    " [", round(Low_CI_4, 2), ", ", round(High_CI_4, 2), "]\n", sep = "")
 ```
 
 First, we can see that the treatment effect in all four quartiles is positive. This suggests that, on average, 401(k) eligibility has a positive impact on net financial assets across all four quartiles. 
 
-In terms of treatment heterogeneity, we find that the threatment effects for the bottom three quartiles are relatively similar, ranging from $5,826 to $6,437. However, for the 25% of individuals predicted to benefit the most, the treatment effect almost doubles. 
+In terms of treatment heterogeneity, we find that the treatment effects for the bottom three quartiles are relatively similar, ranging from $5,826 to $6,437. However, for the 25% of individuals predicted to benefit the most, the treatment effect almost doubles. 
 
 Thus, although the confidence intervals still slightly overlap, still a non-linear treatment effect is suggested. The causal forest did thus succesfully find a sub-population (likely those with higher incomes or higher saving preferences), for which the tax-advantaged saving mechanism is effective.
 
 ```{r, echo = FALSE}
 #Q3
+
+# Overlap plot: propensity score distribution by treatment group
+
+pension$p_hat_raw <- A_hat
+
+pension$e401_factor <- factor(
+  pension$e401,
+  levels = c(0, 1),
+  labels = c("Not eligible", "Eligible")
+)
+
+ggplot(pension, aes(x = p_hat_raw, fill = e401_factor, color = e401_factor)) +
+  geom_density(alpha = 0.3, linewidth = 0.8) +
+  geom_vline(xintercept = c(0.05, 0.95), linetype = "dashed", color = "red") +
+  theme_minimal() +
+  labs(
+    title = "Propensity score overlap by treatment group",
+    x = expression(hat(P)(A == 1 ~ "|" ~ L)),
+    y = "Density",
+    fill = "401(k) eligibility",
+    color = "401(k) eligibility"
+  )
+
+
+
+
 
 ## CATE predictions (E(Y1-Y0)/L)
 CATEhat<-pension$CATE
@@ -419,7 +480,7 @@ var <- Y_X_hat
 #Get actual average treatment effect (E(Y1-Y0))
 atehat<-average_treatment_effect(causal_forest)["estimate"]
 #Get actual average treatment effect (E(Y1-Y0))
-atehat <- as.numeric(average_treatment_effect(causal_forest)["estimate"])
+#atehat <- as.numeric(average_treatment_effect(causal_forest)["estimate"])
 ## E(Y/A,L)
 Y_AX_hat
 
@@ -440,7 +501,7 @@ sigma_sq_hat<-mean(term1+2*(CATEhat-atehat)*term2*term3)
 IF_sigma<- term1 - sigma_sq_hat +2 * (CATEhat - atehat) * term2 * term3
 #get standard error of sigma_sq_est
 # ss = sample size
-ss<-length(EIF)
+ss<-length(IF_sigma)
 sigma_sq_se<- sd(IF_sigma)/sqrt(ss)
 #get CI
 high_ci<-sigma_sq_hat+1.96*sigma_sq_se
@@ -1012,8 +1073,6 @@ hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Pro
 We estimated the conditional average treatment effect (CATE) of eligibility for a 401(k) plan on net financial assets using a orthogonal doubly robust (DR) learner. The nuisance components — the propensity score and the conditional outcome models — were estimated using random forests, using all covariates n order to improve confounding adjustment. In the final-stage the doubly robust pseudo-outcomes were modelled on income only, using a ordinary linear model.
 
 Compared to the earlier causal forest approach, the chosen DR-learner introduces an additional modeling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies smoothly and approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically and therefore allow for more flexible nonlinear patterns and interactions. The advantage of using in the final stage a linear model instead of a Causal Forest is improved interpretability and easier visualization of the treatment effect as a function of income.
-
-
 
 Q4 met R-learner
 ```{r, echo = FALSE}
