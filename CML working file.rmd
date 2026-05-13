@@ -5,7 +5,11 @@ date: "`r Sys.Date()`"
 output: pdf_document
 header-includes:
   - \usepackage{tikz}
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(hdm)
@@ -70,8 +74,6 @@ for (k in 1:K) {
 }
 ```
 
-
-
 ```{r, echo = FALSE}
 pension$A_hat <- A_hat
 
@@ -81,22 +83,12 @@ ggplot(pension, aes(x = inc, y = A_hat)) +
   labs(title = "Propensity score vs income")
 ```
 
+Zonder truncation of propensity scores mean(A_hat \< 0.01 \| A_hat \>
+0.99) [1] 0 mean(A_hat \< 0.05 \| A_hat \> 0.95) [1] 0.02158346
 
+ATE - Causal Forest = 7892.037 ATE_sd: 1106.29
 
-
-
-Zonder truncation of propensity scores
-mean(A_hat < 0.01 | A_hat > 0.99)
-[1] 0
-mean(A_hat < 0.05 | A_hat > 0.95)
-[1] 0.02158346
-
-ATE - Causal Forest = 7892.037
-ATE_sd: 1106.29
-
-ATE_CI_low = 5723.7
-ATE_CI_high = 10060.38
-
+ATE_CI_low = 5723.7 ATE_CI_high = 10060.38
 
 ```{r, echo = FALSE}
 # 1a) Train Causal Forest
@@ -116,6 +108,7 @@ pension$CATE <- tau.hat.oob$predictions
 ```
 
 Hieronder CATE benaderen met smoothing spline (lambda=1)
+
 ```{r, echo = FALSE}
 # Smoother
 # spline fit
@@ -131,6 +124,7 @@ x_grid <- seq(min(pension$inc),
 pred <- predict(fit, x = x_grid)
 
 ```
+
 ```{r, echo = FALSE}
 # plot
 # dataframe maken voor ggplot
@@ -148,7 +142,9 @@ ggplot(pension, aes(x = inc, y = CATE)) +
             linewidth = 1.2) +
   labs(title = "Treatment effect vs income")
 ```
+
 En gewoon met lineaire regressie.
+
 ```{r, echo = FALSE}
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -182,17 +178,19 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   labs(title = "Treatment effect vs income (with uncertainty)")
 ```
 
-
-
 ```{r, echo = FALSE}
 hist(pension$CATE, main = "CATE", xlab = "CATE")
 hist(Y_X_hat, main = "Expected responses", xlab = "Y")
 hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
+```{r}
+# Save raws in seperate part to make sure the truncated propensities dont alter it while rerunning plots
+A_hat_raw <- A_hat
+```
+
 ```{r, echo = FALSE}
 
 hist(A_hat, main = "Propensity scores")
-A_hat_raw <- A_hat  
 delta <- 0.05
 A_hat[test] <- pmax(delta, pmin(1 - delta, A_hat[test]))
 
@@ -237,6 +235,7 @@ ggplot(pension, aes(x = age, y = CATE)) +
 ```
 
 Determining the ATE and his confidence interval.
+
 ```{r, echo = FALSE}
 ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
@@ -250,66 +249,136 @@ ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
 
-
-
 #1a) interpretation
 
-The causal forest analysis reveals a substantial and statistically significant effect of eligibility for enrollment in a 401(k) plan on accumulated net financial assets. The estimated Average Treatment Effect (ATE) equals 7,892.037, indicating that individuals who are eligible for a 401(k) plan accumulate, on average, approximately \$7,892.037 more in net financial assets than non-eligible individuals. The estimated standard error is \$1,106.29, resulting in a 95% confidence interval of [\$5,723.7, \$10,060.38].
+The causal forest analysis reveals a substantial and statistically
+significant effect of eligibility for enrollment in a 401(k) plan on
+accumulated net financial assets. The estimated Average Treatment Effect
+(ATE) equals 7,892.037, indicating that individuals who are eligible for
+a 401(k) plan accumulate, on average, approximately \$7,892.037 more in
+net financial assets than non-eligible individuals. The estimated
+standard error is \$1,106.29, resulting in a 95% confidence interval of
+[\$5,723.7, \$10,060.38].
 
-In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals. Figure ... presents a histogram of the predicted CATE values. Furthermore, the estimated CATE was plotted against income, revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
+In addition to the average treatment effect, the Conditional Average
+Treatment Effect (CATE) was examined to investigate heterogeneity in
+treatment effects across individuals. Figure ... presents a histogram of
+the predicted CATE values. Furthermore, the estimated CATE was plotted
+against income, revealing a clear upward trend: the effect of 401(k)
+eligibility appears to increase with income. Thus, becoming eligible
+does have a positive impact on financial assets, but mainly so for
+richer individuals.
 
-To better characterize this relationship, both a linear regression model and a smoothing spline regression (with \lambda = 1) were fitted. The corresponding trends are displayed in Figures ... and .... While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
+To better characterize this relationship, both a linear regression model
+and a smoothing spline regression (with \lambda = 1) were fitted. The
+corresponding trends are displayed in Figures ... and .... While the
+estimated curves differ somewhat at higher income levels, this part of
+the income distribution contains relatively few observations, implying
+considerably greater uncertainty in this region.
 
-To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram. No propensity scores below 0.01 or above 0.99 were observed, and only 2.2% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed. This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate. This can be viewed as an example of the bias--variance trade-off. Although trimming extreme propensity scores can reduce the variance of the estimator by limiting the influence of highly weighted observations, it may simultaneously introduce additional bias by systematically excluding specific subpopulations from the analysis.
+To assess the stability of the inverse probability weights, the
+distribution of the estimated propensity scores was also investigated
+using a histogram. No propensity scores below 0.01 or above 0.99 were
+observed, and only 2.2% of the scores were smaller than 0.05 or larger
+than 0.95. Overall, the propensity scores do not exhibit problematic
+extremes. In addition, a clear relationship between income and the
+propensity scores was observed. This finding is inconsistent with the
+assumption of exchangeability conditional on income alone. Together with
+the limited number of extreme propensity scores, this provides an
+additional reason not to apply propensity score truncation. Removing
+observations with extreme propensity scores would likely shift the
+estimated ATE toward the treatment effect for higher-income individuals,
+thereby reducing the representativeness of the overall estimate. This
+can be viewed as an example of the bias--variance trade-off. Although
+trimming extreme propensity scores can reduce the variance of the
+estimator by limiting the influence of highly weighted observations, it
+may simultaneously introduce additional bias by systematically excluding
+specific subpopulations from the analysis.
 
-To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (REFERENCE).
+To estimate the propensity scores and outcomes, 5-fold cross-fitting was
+applied. The modeling was performed using Regression Forests, as
+described in the documentation of the GRF package (REFERENCE).
 
+Nog stukje Bart Using causal forests with cross-fitting (5 folds), we
+find the average treatment effect to be approximately: , with a
+confidence interval ranging from and . Because the confidence interval
+is positive and larger than 0, we conclude that being eligible for the
+401(k) has a significant and positive effect on the net financial assets
+of a perosn.
 
+In terms of heterogeneity, we find that the treatment effect is not
+uniform across the population. There is a large, non-linear
+relationship, as richer individuals have a larger increase in net
+financial assets when becoming eligible for 401(k) than poorer
+individuals. Thus, becoming eligible does have a positive impact on
+financial assets, but mainly so for richer individuals.
 
-Nog stukje Bart
-Using causal forests with cross-fitting (5 folds), we find the average treatment effect to be approximately: , with a confidence interval ranging from and . Because the confidence interval is positive and larger than 0, we conclude that being eligible for the 401(k) has a significant and positive effect on the net financial assets of a perosn.
+#1b) \## Non-collapsibility in Non-linear Models
 
-In terms of heterogeneity, we find that the treatment effect is not uniform across the population. There is a large, non-linear relationship, as richer individuals have a larger increase in net financial assets when becoming eligible for 401(k) than poorer individuals. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
-
-#1b)
-## Non-collapsibility in Non-linear Models
-
-First, it is important to note that adding variables to non-linear models generally leads to changes in coefficients, even in the absence of confounding. This phenomenon is known as *non-collapsibility*: marginal and conditional effect measures differ even in the absence of confounding.
+First, it is important to note that adding variables to non-linear
+models generally leads to changes in coefficients, even in the absence
+of confounding. This phenomenon is known as *non-collapsibility*:
+marginal and conditional effect measures differ even in the absence of
+confounding.
 
 ## Role of Additional Variables in a Causal Diagram
 
-In addition, including variables in an analysis can have different effects depending on their position in the causal diagram.
+In addition, including variables in an analysis can have different
+effects depending on their position in the causal diagram.
 
-- *Collider*  
-  In the case of a collider *(Income → Collider ← Outcome)*, conditioning on this variable introduces collider bias.  
-  Conditioning on a collider opens a backdoor pathway, making the estimated effect of income biased and very difficult to interpret.
+-   *Collider*\
+    In the case of a collider *(Income → Collider ← Outcome)*,
+    conditioning on this variable introduces collider bias.\
+    Conditioning on a collider opens a backdoor pathway, making the
+    estimated effect of income biased and very difficult to interpret.
 
-- *Mediator*  
-  In the case of a mediator *(Income → Mediator → Outcome)*, part of the effect of income is captured through an indirect effect (via the mediator), and part through a direct effect (the effect observed directly).  
-  Including a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect, but only the direct effect.
+-   *Mediator*\
+    In the case of a mediator *(Income → Mediator → Outcome)*, part of
+    the effect of income is captured through an indirect effect (via the
+    mediator), and part through a direct effect (the effect observed
+    directly).\
+    Including a mediator is therefore not incorrect, but it implies that
+    the estimated effect is no longer the total effect, but only the
+    direct effect.
 
-- *Common Cause*  
-  In the case of a common cause *(Income ← Common Cause → Outcome)*, it is appropriate to include this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of income not credible. We note that conditional exchangeability given only income does not hold if there exist common causes of income and the outcome that are not controlled for.
+-   *Common Cause*\
+    In the case of a common cause *(Income ← Common Cause → Outcome)*,
+    it is appropriate to include this variable in the analysis. If a
+    common cause is omitted, a backdoor pathway remains open, making the
+    estimated effect of income not credible. We note that conditional
+    exchangeability given only income does not hold if there exist
+    common causes of income and the outcome that are not controlled for.
 
-- *Variable Affecting Only Income*  
-  If a variable only affects income, including it in the analysis does not introduce bias.  
-  However, it may still influence the estimated effect of income due to non-collapsibility in non-linear models and influence the precision of the estimation.
+-   *Variable Affecting Only Income*\
+    If a variable only affects income, including it in the analysis does
+    not introduce bias.\
+    However, it may still influence the estimated effect of income due
+    to non-collapsibility in non-linear models and influence the
+    precision of the estimation.
 
-- *Variable Affecting Only the Outcome*  
-  If a variable only affects the outcome and not income, it can be included in the analysis.  
-  Including such variables may improve the efficiency of the estimation.
+-   *Variable Affecting Only the Outcome*\
+    If a variable only affects the outcome and not income, it can be
+    included in the analysis.\
+    Including such variables may improve the efficiency of the
+    estimation.
 
 ## Examples
 
-- *Age* could potentially be a *common cause*.  
-  Older individuals tend to earn more and may also be more likely to participate in a 401(k) program.
+-   *Age* could potentially be a *common cause*.\
+    Older individuals tend to earn more and may also be more likely to
+    participate in a 401(k) program.
 
-- *Family Size* could act as a *mediator*, as it may influence the likelihood of participating in a 401(k) program while also being affected by income.
+-   *Family Size* could act as a *mediator*, as it may influence the
+    likelihood of participating in a 401(k) program while also being
+    affected by income.
 
-- *Years of Education* could be a *common cause*.  
-  The more education an individual has, the higher their income tends to be, and the more likely they may be to participate in a 401(k) program.
-  
-% --- COLLIDER ---
+-   *Years of Education* could be a *common cause*.\
+    The more education an individual has, the higher their income tends
+    to be, and the more likely they may be to participate in a 401(k)
+    program.
+
+\% --- COLLIDER ---
+
 \begin{center}
 \textbf{Collider} \\
 \vspace{0.5cm}
@@ -323,7 +392,8 @@ In addition, including variables in an analysis can have different effects depen
 \end{tikzpicture}
 \end{center}
 
-% --- MEDIATOR ---
+\% --- MEDIATOR ---
+
 \begin{center}
 \textbf{Mediator} \\
 \vspace{0.5cm}
@@ -337,7 +407,8 @@ In addition, including variables in an analysis can have different effects depen
 \end{tikzpicture}
 \end{center}
 
-% --- COMMON CAUSE ---
+\% --- COMMON CAUSE ---
+
 \begin{center}
 \textbf{Common Cause} \\
 \vspace{0.5cm}
@@ -393,11 +464,20 @@ High_CI_4
 
 ```
 
-First, we can see that the treatment effect in all four quartiles is positive. This suggests that, on average, 401(k) eligibility has a positive impact on net financial assets across all four quartiles. 
+First, we can see that the treatment effect in all four quartiles is
+positive. This suggests that, on average, 401(k) eligibility has a
+positive impact on net financial assets across all four quartiles.
 
-In terms of treatment heterogeneity, we find that the threatment effects for the bottom three quartiles are relatively similar, ranging from $5,826 to $6,437. However, for the 25% of individuals predicted to benefit the most, the treatment effect almost doubles. 
+In terms of treatment heterogeneity, we find that the threatment effects
+for the bottom three quartiles are relatively similar, ranging from
+\$5,826 to \$6,437. However, for the 25% of individuals predicted to
+benefit the most, the treatment effect almost doubles.
 
-Thus, although the confidence intervals still slightly overlap, still a non-linear treatment effect is suggested. The causal forest did thus succesfully find a sub-population (likely those with higher incomes or higher saving preferences), for which the tax-advantaged saving mechanism is effective.
+Thus, although the confidence intervals still slightly overlap, still a
+non-linear treatment effect is suggested. The causal forest did thus
+succesfully find a sub-population (likely those with higher incomes or
+higher saving preferences), for which the tax-advantaged saving
+mechanism is effective.
 
 ```{r, echo = FALSE}
 #Q3
@@ -440,7 +520,7 @@ sigma_sq_hat<-mean(term1+2*(CATEhat-atehat)*term2*term3)
 IF_sigma<- term1 - sigma_sq_hat +2 * (CATEhat - atehat) * term2 * term3
 #get standard error of sigma_sq_est
 # ss = sample size
-ss<-length(EIF)
+ss<-length(IF_sigma)
 sigma_sq_se<- sd(IF_sigma)/sqrt(ss)
 #get CI
 high_ci<-sigma_sq_hat+1.96*sigma_sq_se
@@ -451,17 +531,8 @@ cat("Estimated Variance (Sigma^2):", sigma_sq_hat, "\n")
 cat("95% CI: [", low_ci, ",", high_ci, "]\n")
 ```
 
-sigma_sq_hat
-16169595
-sigma_sq_se
-41439971
-sigma_sq_hat+1.96*sigma_sq_se
-[1] 97391939
-sigma_sq_hat-1.96*sigma_sq_se
-[1] -65052749
-
-
-
+sigma_sq_hat 16169595 sigma_sq_se 41439971 sigma_sq_hat+1.96*sigma_sq_se
+[1] 97391939 sigma_sq_hat-1.96*sigma_sq_se [1] -65052749
 
 ```{r, echo = FALSE}
 #Extreme influence function diagnostics
@@ -535,6 +606,7 @@ hist(pension$net_tfa,
      xlab = "net_tfa")
 
 ```
+
 ```{r, echo = FALSE}
 # Propensity against covariates
 p_hat <- A_hat
@@ -583,45 +655,58 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
        y = expression(hat(e)(L)), x = "Income") +
   geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
-(The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.)
 
-To assess treatment effect heterogeneity, the variance of the CATE was calculated as given in the assignment. This gives us an idea of the extent as to which the impact of 401(k) eligibility on the net amount of financial assets is different across households with different covariate characteristics. If the effect is close to 0, then we would conclude that the treatment effect is homogenous for households characterized by similar covariates.
+(The 95% confidence interval still overlaps with 0, so there is no
+evidence of effect heterogeneity.)
+
+To assess treatment effect heterogeneity, the variance of the CATE was
+calculated as given in the assignment. This gives us an idea of the
+extent as to which the impact of 401(k) eligibility on the net amount of
+financial assets is different across households with different covariate
+characteristics. If the effect is close to 0, then we would conclude
+that the treatment effect is homogenous for households characterized by
+similar covariates.
 
 More formally, we estimated:
 
-\[
+$$
 \sigma^2 = Var\{E(Y^1 - Y^0 \mid L)\},
-\]
+$$
 
-where \(Y^1\) and \(Y^0\) give the outcomes under treatment (eligibility) and control (non-eligibility), respectively, and \(L\) gives the covariates:
+where $Y^1$ and $Y^0$ give the outcomes under treatment (eligibility)
+and control (non-eligibility), respectively, and $L$ gives the
+covariates:
 
-\[
+$$
 \tau(L) = E(Y^1 - Y^0 \mid L),
-\]
+$$
 
 Thus, we can write:
 
-\[
+$$
 \sigma^2 = Var\{\tau(L)\}.
-\]
+$$
 
 If
 
-\[
+$$
 \psi = E\{\tau(L)\}
-\]
+$$
 
 gives the average treatment effect. Then,
 
-\[
+$$
 \sigma^2 = E\left[\{\tau(L)-\psi\}^2\right].
-\]
+$$
 
-Thus, \(\sigma^2\) measures the variance of the CATE around the ATE. 
+Thus, $\sigma^2$ measures the variance of the CATE around the ATE.
 
-Normally, we would just compute the variance around the CATE's. However, CATEs are estimated and therefore, this could lead to incorrect inference. Therefore, the efficient influence function for \(\sigma^2\) is used, denoted by:
+Normally, we would just compute the variance around the CATE's. However,
+CATEs are estimated and therefore, this could lead to incorrect
+inference. Therefore, the efficient influence function for $\sigma^2$ is
+used, denoted by:
 
-\[
+$$
 \begin{aligned}
 \phi(O) 
 =& \{\tau(L)-\psi\}^2 - \sigma^2 \\
@@ -633,23 +718,26 @@ Normally, we would just compute the variance around the CATE's. However, CATEs a
 \right\}
 \{Y - E(Y\mid A,L)\}.
 \end{aligned}
-\]
+$$
 
-The efficient influence function has mean zero at the true value of the parameter, meaning that
+The efficient influence function has mean zero at the true value of the
+parameter, meaning that
 
-\[
+$$
 E\{\phi(O)\}=0.
-\]
+$$
 
-This property can be used to construct an estimator for \(\sigma^2\). In practice, we replace the unknown nuisance functions by estimates and solve the empirical analogue of this mean-zero condition:
+This property can be used to construct an estimator for $\sigma^2$. In
+practice, we replace the unknown nuisance functions by estimates and
+solve the empirical analogue of this mean-zero condition:
 
-\[
+$$
 \frac{1}{n}\sum_{i=1}^{n}\hat{\phi}_i = 0.
-\]
+$$
 
 Starting from the efficient influence function, this means solving
 
-\[
+$$
 \frac{1}{n}\sum_{i=1}^{n}
 \left[
 \{\hat{\tau}(L_i)-\hat{\psi}\}^2 - \hat{\sigma}^2
@@ -663,39 +751,37 @@ Starting from the efficient influence function, this means solving
 \{Y_i-\hat{m}(A_i,L_i)\}
 \right]
 =0.
-\]
-
-
+$$
 
 We replace the (unknown) nuisance functions by empirical estimates
 
-\[
+$$
 \hat{\tau}(L_i)
-\]
+$$
 
 for the estimated CATE from the causal forest,
 
-\[
+$$
 \hat{\psi}
-\]
+$$
 
 for the estimated average treatment effect,
 
-\[
+$$
 \hat{p}(L_i) = \hat{P}(A_i=1\mid L_i)
-\]
+$$
 
 for the estimated propensity score,
 
-\[
+$$
 \hat{m}(A_i,L_i) = \hat{E}(Y_i\mid A_i,L_i)
-\]
+$$
 
 for the estimated outcome regression.
 
 This gives the following debiased estimator:
 
-\[
+$$
 \hat{\sigma}^2 =
 \frac{1}{n}\sum_{i=1}^{n}
 \left[
@@ -709,19 +795,22 @@ This gives the following debiased estimator:
 \right\}
 \{Y_i-\hat{m}(A_i,L_i)\}
 \right].
-\]
+$$
 
 The first term,
 
-\[
+$$
 \{\hat{\tau}(L_i)-\hat{\psi}\}^2,
-\]
+$$
 
-gives the estimated variation in the CATE around the ATE. The second term is a debiasing correction based on the residuals from the outcome regression and inverse probability weighting. This correction accounts for potential misspecification in the nuisance functions.
+gives the estimated variation in the CATE around the ATE. The second
+term is a debiasing correction based on the residuals from the outcome
+regression and inverse probability weighting. This correction accounts
+for potential misspecification in the nuisance functions.
 
 Then, we estimated the influence-function values as
 
-\[
+$$
 \begin{aligned}
 \hat{\phi}_i 
 =& \{\hat{\tau}(L_i)-\hat{\psi}\}^2 - \hat{\sigma}^2 \\
@@ -733,35 +822,57 @@ Then, we estimated the influence-function values as
 \right\}
 \{Y_i-\hat{m}(A_i,L_i)\}.
 \end{aligned}
-\]
+$$
 
 The standard error is estimated as:
 
-\[
+$$
 \widehat{SE}(\hat{\sigma}^2)
 =
 \frac{sd(\hat{\phi}_i)}{\sqrt{n}},
-\]
+$$
 
 and a 95% confidence interval was constructed as
 
-\[
+$$
 \hat{\sigma}^2
 \pm
 1.96 \times \widehat{SE}(\hat{\sigma}^2).
-\]
+$$
 
-Ultimately, we inspected the estimated influence-function values and the inverse probability weights as diagnostics, to see if our estimates and CI's were driven by those.
+Ultimately, we inspected the estimated influence-function values and the
+inverse probability weights as diagnostics, to see if our estimates and
+CI's were driven by those.
 
 #Main conclusion
 
-Our estimate is negative, approximately −6.68×10^6. As σ^2 denotes the variance, this cannot be negative. However, the debiased estimator is not constrained to be non-negative in finite samples, so a negative estimate can happen if the heterogeneity is small relative to the sampling variability. The 95% confidence interval includes 0, and this thus means that we cannot concldue that there is significant heterogeneity in the impact of being eligible for 401(k) schemes for different households.
+Our estimate is negative, approximately −6.68×10\^6. As σ\^2 denotes the
+variance, this cannot be negative. However, the debiased estimator is
+not constrained to be non-negative in finite samples, so a negative
+estimate can happen if the heterogeneity is small relative to the
+sampling variability. The 95% confidence interval includes 0, and this
+thus means that we cannot concldue that there is significant
+heterogeneity in the impact of being eligible for 401(k) schemes for
+different households.
 
-As our estimates are rather large, we also took a deeper look at the values for the efficient influence functions. This check indicated that certain observations had large absolute influence function values. More specifically, these values are mostly driven by households with a high amount of net financial assets (and thus large residuals). We further investigated whether the propensity scores of these observations were close to 0 or 1, and this was not the case. Thus, these values were caused by the very large residual values caused by the right-skewed distribution, not by the propensity scores.
+As our estimates are rather large, we also took a deeper look at the
+values for the efficient influence functions. This check indicated that
+certain observations had large absolute influence function values. More
+specifically, these values are mostly driven by households with a high
+amount of net financial assets (and thus large residuals). We further
+investigated whether the propensity scores of these observations were
+close to 0 or 1, and this was not the case. Thus, these values were
+caused by the very large residual values caused by the right-skewed
+distribution, not by the propensity scores.
 
-Overall, as the confidence intervals overlap with 0, we cannot conclude treatment effect heterogeneity. However, as these confidence intervals remain very broad, it is also difficult to conclude that there is no heterogeneity. Therefore, it is difficult to take conclusions, as inference is impacted by specific high-asset households.
+Overall, as the confidence intervals overlap with 0, we cannot conclude
+treatment effect heterogeneity. However, as these confidence intervals
+remain very broad, it is also difficult to conclude that there is no
+heterogeneity. Therefore, it is difficult to take conclusions, as
+inference is impacted by specific high-asset households.
 
 Q4 met DR-learner
+
 ```{r, echo = FALSE}
 # Q4
 # DR-learner implementation
@@ -901,6 +1012,7 @@ coord_cartesian(ylim = c(0, 60000)) +
 labs(title = "Treatment effect vs income")
 
 ```
+
 ```{r, echo = FALSE}
 l <- 2
 train <- folds != l
@@ -924,7 +1036,6 @@ labs(title = "Treatment effect vs income")
 
 ```
 
-
 ```{r, echo = FALSE}
 # ATE calculations
 # ATE
@@ -935,42 +1046,21 @@ ate_hat <- mean(C_DR_av)
 mean(CATE)
 se_hat  <- sd(C_DR_av) / sqrt(n)
 ```
-DR-learner
-1e run
-se_hat
-[1] 1123.617
-mean(pseudooutcomes)
-[1] 7897.361
-mean(CATE)
-[1] 7888.084
 
-Boven- en ondergrens ATE
-[1] 10099.65
-[1] 5695.072
+DR-learner 1e run se_hat [1] 1123.617 mean(pseudooutcomes) [1] 7897.361
+mean(CATE) [1] 7888.084
 
-2e run
-se_hat
-[1] 1167.328
-mean(pseudooutcomes)
-[1] 7878.258
-mean(CATE)
+Boven- en ondergrens ATE [1] 10099.65 [1] 5695.072
+
+2e run se_hat [1] 1167.328 mean(pseudooutcomes) [1] 7878.258 mean(CATE)
 [1] 7885.001
 
-Boven- en ondergrens ATE
-[1] 10166.22
-[1] 5590.296
+Boven- en ondergrens ATE [1] 10166.22 [1] 5590.296
 
-Stratified run
-se_hat
-[1] 1142.036
-mean(pseudooutcomes)
-[1] 7888.663
-mean(CATE)
-[1] 7868.564
+Stratified run se_hat [1] 1142.036 mean(pseudooutcomes) [1] 7888.663
+mean(CATE) [1] 7868.564
 
-Boven- en ondergrens ATE
-[1] 10127.05
-[1] 5650.273
+Boven- en ondergrens ATE [1] 10127.05 [1] 5650.273
 
 ```{r, echo = FALSE}
 # 95% betrouwbaarheidsintervallen
@@ -981,6 +1071,7 @@ ate_hat - 1.96 * se_hat
 ```{r, echo = FALSE}
 hist(CATE, main = "CATE")
 ```
+
 ```{r, echo = FALSE}
 # plot 95% CI's
 pension$CATE <- CATE
@@ -1009,13 +1100,27 @@ hist(rowSums(Y0_hat, na.rm = TRUE)/(K-1), main = "Expected responses without tre
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
 
-We estimated the conditional average treatment effect (CATE) of eligibility for a 401(k) plan on net financial assets using a orthogonal doubly robust (DR) learner. The nuisance components — the propensity score and the conditional outcome models — were estimated using random forests, using all covariates n order to improve confounding adjustment. In the final-stage the doubly robust pseudo-outcomes were modelled on income only, using a ordinary linear model.
+We estimated the conditional average treatment effect (CATE) of
+eligibility for a 401(k) plan on net financial assets using a orthogonal
+doubly robust (DR) learner. The nuisance components — the propensity
+score and the conditional outcome models — were estimated using random
+forests, using all covariates n order to improve confounding adjustment.
+In the final-stage the doubly robust pseudo-outcomes were modelled on
+income only, using a ordinary linear model.
 
-Compared to the earlier causal forest approach, the chosen DR-learner introduces an additional modeling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies smoothly and approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically and therefore allow for more flexible nonlinear patterns and interactions. The advantage of using in the final stage a linear model instead of a Causal Forest is improved interpretability and easier visualization of the treatment effect as a function of income.
-
-
+Compared to the earlier causal forest approach, the chosen DR-learner
+introduces an additional modeling assumption in the final stage.
+Specifically, by regressing the pseudo-outcomes linearly on income, the
+method assumes that the treatment effect varies smoothly and
+approximately linearly with income. In contrast, causal forests estimate
+treatment heterogeneity fully nonparametrically and therefore allow for
+more flexible nonlinear patterns and interactions. The advantage of
+using in the final stage a linear model instead of a Causal Forest is
+improved interpretability and easier visualization of the treatment
+effect as a function of income.
 
 Q4 met R-learner
+
 ```{r, echo = FALSE}
 # Q4
 # R-learner implementation
@@ -1047,8 +1152,8 @@ W_R <- matrix(NA, nrow = n, ncol = K)
 CATE <- rep(NA, n)
 ```
 
-
 Q4 met R-learner
+
 ```{r, echo = FALSE}
 # Q4
 # Random folds
@@ -1140,19 +1245,14 @@ mean(CATE)
 se_hat  <- sd(CATE) / sqrt(n)
 ```
 
-R-learner 1ste run
-mean(CATE)
-[1] 8049.97
-sd(CATE) / sqrt(n)
-[1] 44.48384
-mean(CATE) + 1.96 * sd(CATE) / sqrt(n)
-[1] 8137.159
-mean(CATE) - 1.96 * sd(CATE) / sqrt(n)
-[1] 7962.782
+R-learner 1ste run mean(CATE) [1] 8049.97 sd(CATE) / sqrt(n) [1]
+44.48384 mean(CATE) + 1.96 \* sd(CATE) / sqrt(n) [1] 8137.159
+mean(CATE) - 1.96 \* sd(CATE) / sqrt(n) [1] 7962.782
 
 ```{r, echo = FALSE}
 hist(CATE, main = "CATE")
 ```
+
 ```{r, echo = FALSE}
 pension$CATE <- CATE
 ggplot(pension, aes(x = inc, y = CATE)) +
@@ -1160,6 +1260,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   geom_smooth() +
   labs(title = "Treatment effect vs income")
 ```
+
 ```{r, echo = FALSE}
 hist(rowSums(Yx_hat, na.rm = TRUE)/(K-1), main = "Expected responses", xlab = "E[Y]")
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
@@ -1171,7 +1272,6 @@ A_hat_vector <- rowSums(A_hat, na.rm = TRUE)/(K-1)
 mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
 mean(A_hat_vector < 0.05 | A_hat_vector > 0.95)
 ```
-mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
-[1] 0
-mean(A_hat_vector < 0.05 | A_hat_vector > 0.95)
-[1] 0.008976299
+
+mean(A_hat_vector \< 0.01 \| A_hat_vector \> 0.99) [1] 0
+mean(A_hat_vector \< 0.05 \| A_hat_vector \> 0.95) [1] 0.008976299
