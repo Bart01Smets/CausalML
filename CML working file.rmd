@@ -453,7 +453,7 @@ sigma_sq_hat<-mean(term1+2*(CATEhat-atehat)*term2*term3)
 IF_sigma<- term1 - sigma_sq_hat +2 * (CATEhat - atehat) * term2 * term3
 #get standard error of sigma_sq_est
 # ss = sample size
-ss<-length(EIF)
+ss<-length(sigma_sq_hat)
 sigma_sq_se<- sd(IF_sigma)/sqrt(ss)
 #get CI
 high_ci<-sigma_sq_hat+1.96*sigma_sq_se
