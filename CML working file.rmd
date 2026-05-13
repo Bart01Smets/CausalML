@@ -131,7 +131,7 @@ x_grid <- seq(min(pension$inc),
 pred <- predict(fit, x = x_grid)
 
 ```
-```{r, echo = FALSE}
+```{r fig-cate-inc-smooth, echo=FALSE, fig.cap="Treatment effect vs income (smoothing spline)"}
 # plot
 # dataframe maken voor ggplot
 pred_df <- data.frame(
@@ -149,7 +149,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   labs(title = "Treatment effect vs income")
 ```
 En gewoon met lineaire regressie.
-```{r, echo = FALSE}
+```{r fig-cate-inc-lm, echo=FALSE, fig.cap="Treatment effect vs income (linear model)"}
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth(method = "lm",
@@ -182,10 +182,11 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   labs(title = "Treatment effect vs income (with uncertainty)")
 ```
 
-
+```{r fig-cate-hist, echo=FALSE, fig.cap="Histogram of the predicted CATE values"}
+hist(pension$CATE, main = "CATE", xlab = "CATE")
+```
 
 ```{r, echo = FALSE}
-hist(pension$CATE, main = "CATE", xlab = "CATE")
 hist(Y_X_hat, main = "Expected responses", xlab = "Y")
 hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
@@ -256,13 +257,15 @@ ci_high <- ate[1] + 1.96 * ate[2]
 
 The causal forest analysis reveals a substantial and statistically significant effect of eligibility for enrollment in a 401(k) plan on accumulated net financial assets. The estimated Average Treatment Effect (ATE) equals 7,892.037, indicating that individuals who are eligible for a 401(k) plan accumulate, on average, approximately \$7,892.037 more in net financial assets than non-eligible individuals. The estimated standard error is \$1,106.29, resulting in a 95% confidence interval of [\$5,723.7, \$10,060.38].
 
-In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals. Figure ... presents a histogram of the predicted CATE values. Furthermore, the estimated CATE was plotted against income, revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
+In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals. Figure \@ref(fig:fig-cate-hist) presents a histogram of the predicted CATE values. Most individuals have positive CATE values, although negative values are also observed. Furthermore, the estimated CATE was plotted against income, revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
 
-To better characterize this relationship, both a linear regression model and a smoothing spline regression (with \lambda = 1) were fitted. The corresponding trends are displayed in Figures ... and .... While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
+To better characterize this relationship, both a linear regression model and a smoothing spline regression (with \lambda = 1) were fitted. The corresponding trends are displayed in Figures \@ref(fig:fig-cate-inc-smooth) and \@ref(fig:fig-cate-inc-lm) While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
 
 To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram. No propensity scores below 0.01 or above 0.99 were observed, and only 2.2% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed. This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate. This can be viewed as an example of the bias--variance trade-off. Although trimming extreme propensity scores can reduce the variance of the estimator by limiting the influence of highly weighted observations, it may simultaneously introduce additional bias by systematically excluding specific subpopulations from the analysis.
 
-To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (REFERENCE).
+To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (Tibshirani et al., 2024).
+
+Reference: https://grf-labs.github.io/grf/reference/causal_forest.html
 
 
 
@@ -272,10 +275,6 @@ Using causal forests with cross-fitting (5 folds), we find the average treatment
 In terms of heterogeneity, we find that the treatment effect is not uniform across the population. There is a large, non-linear relationship, as richer individuals have a larger increase in net financial assets when becoming eligible for 401(k) than poorer individuals. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
 
 #1b)
-## Non-collapsibility in Non-linear Models
-
-First, it is important to note that adding variables to non-linear models generally leads to changes in coefficients, even in the absence of confounding. This phenomenon is known as *non-collapsibility*: marginal and conditional effect measures differ even in the absence of confounding.
-
 ## Role of Additional Variables in a Causal Diagram
 
 In addition, including variables in an analysis can have different effects depending on their position in the causal diagram.
@@ -1023,6 +1022,7 @@ Q4 met R-learner
 # 1) 
 
 # Reference: solutions of lab Causal Prediction
+# Other method: https://rdrr.io/github/xnie/rlearner/man/rboost.html
 
 set.seed(142)
 
