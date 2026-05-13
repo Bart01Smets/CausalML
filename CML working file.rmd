@@ -23,7 +23,7 @@ library(ggplot2)
 
 ```{r, echo = FALSE}
 # Cross-fitting
-
+set.seed(123456789)
 # Reference doc:
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
@@ -73,6 +73,7 @@ for (k in 1:K) {
 
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 pension$A_hat <- A_hat
 
 ggplot(pension, aes(x = inc, y = A_hat)) +
@@ -99,6 +100,7 @@ ATE_CI_high = 10060.38
 
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # 1a) Train Causal Forest
 causal_forest <- causal_forest(X = X, Y = Y, W = A,
   Y.hat = Y_X_hat,
@@ -110,6 +112,7 @@ causal_forest <- causal_forest(X = X, Y = Y, W = A,
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Extract CATE and variances
 tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
@@ -117,6 +120,7 @@ pension$CATE <- tau.hat.oob$predictions
 
 Hieronder CATE benaderen met smoothing spline (lambda=1)
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Smoother
 # spline fit
 fit <- smooth.spline(x = pension$inc,
@@ -131,7 +135,9 @@ x_grid <- seq(min(pension$inc),
 pred <- predict(fit, x = x_grid)
 
 ```
+
 ```{r fig-cate-inc-smooth, echo=FALSE, fig.cap="Treatment effect vs income (smoothing spline)"}
+set.seed(123456789)
 # plot
 # dataframe maken voor ggplot
 pred_df <- data.frame(
@@ -150,6 +156,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 En gewoon met lineaire regressie.
 ```{r fig-cate-inc-lm, echo=FALSE, fig.cap="Treatment effect vs income (linear model)"}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth(method = "lm",
@@ -160,6 +167,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
 
 # 95% betrouwbaarheidsintervallen
@@ -168,6 +176,7 @@ pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -176,6 +185,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
@@ -183,15 +193,17 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r fig-cate-hist, echo=FALSE, fig.cap="Histogram of the predicted CATE values"}
+set.seed(123456789)
 hist(pension$CATE, main = "CATE", xlab = "CATE")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(Y_X_hat, main = "Expected responses", xlab = "Y")
 hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 ```{r, echo = FALSE}
-
+set.seed(123456789)
 hist(A_hat, main = "Propensity scores")
 A_hat_raw <- A_hat  
 delta <- 0.05
@@ -220,10 +232,12 @@ saveRDS(causal_forest, file = "causal_forest_model_ex1_142_20260509final.rds")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 causal_forest2 <- readRDS("causal_forest_model_ex1.rds")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -231,6 +245,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = age, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -239,6 +254,7 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 Determining the ATE and his confidence interval.
 ```{r, echo = FALSE}
+set.seed(123456789)
 ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
                                method = "AIPW")
@@ -247,6 +263,7 @@ ate
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
@@ -348,7 +365,7 @@ In addition, including variables in an analysis can have different effects depen
 \end{center}
 
 ```{r, echo = FALSE}
-
+set.seed(123456789)
 #Q2
 pension$quartiles <- ntile(pension$CATE, 4)
 
@@ -396,6 +413,7 @@ In terms of treatment heterogeneity, we find that the threatment effects for the
 Thus, although the confidence intervals still slightly overlap, still a non-linear treatment effect is suggested. The causal forest did thus succesfully find a sub-population (likely those with higher incomes or higher saving preferences), for which the tax-advantaged saving mechanism is effective.
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 #Q3
 
 ## CATE predictions (E(Y1-Y0)/L)
@@ -460,6 +478,7 @@ sigma_sq_hat-1.96*sigma_sq_se
 
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 #Extreme influence function diagnostics
 summary(IF_sigma)
 
@@ -759,6 +778,7 @@ Overall, as the confidence intervals overlap with 0, we cannot conclude treatmen
 
 Q4 met DR-learner
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # DR-learner implementation
 # Assumptions
@@ -794,6 +814,7 @@ CATE <- rep(NA, n)
 Q4 met DR-learner
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # Random folds
 # folds <- sample(rep(1:K, length.out = n))
@@ -817,6 +838,7 @@ folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # DR-learner implementation
 # Loop
@@ -876,6 +898,7 @@ for (l in 1:K) {
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 l <- 1
 train <- folds != l
 test <- folds == l
@@ -922,6 +945,7 @@ labs(title = "Treatment effect vs income")
 
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # ATE calculations
 # ATE
 C_DR_av <- rowSums(C_DR, na.rm = TRUE)/(K-1)
@@ -969,15 +993,18 @@ Boven- en ondergrens ATE
 [1] 5650.273
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # 95% betrouwbaarheidsintervallen
 ate_hat + 1.96 * se_hat
 ate_hat - 1.96 * se_hat
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(CATE, main = "CATE")
 ```
 ```{r, echo = FALSE}
+set.seed(123456789)
 # plot 95% CI's
 pension$CATE <- CATE
 ggplot(pension, aes(x = inc, y = CATE))  +
@@ -986,6 +1013,7 @@ ggplot(pension, aes(x = inc, y = CATE))  +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -993,6 +1021,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -1000,6 +1029,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(rowSums(Y1_hat, na.rm = TRUE)/(K-1), main = "Expected responses with treatment", xlab = "E[Y1]")
 hist(rowSums(Y0_hat, na.rm = TRUE)/(K-1), main = "Expected responses without treatment", xlab = "E[Y0]")
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
@@ -1013,6 +1043,7 @@ Compared to the earlier causal forest approach, the chosen DR-learner introduces
 
 Q4 met R-learner
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # R-learner implementation
 # Assumptions
@@ -1020,8 +1051,6 @@ Q4 met R-learner
 
 # Reference: solutions of lab Causal Prediction
 # Other method: https://rdrr.io/github/xnie/rlearner/man/rboost.html
-
-set.seed(142)
 
 K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
 
@@ -1047,6 +1076,7 @@ CATE <- rep(NA, n)
 
 Q4 met R-learner
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # Random folds
 # folds <- sample(rep(1:K, length.out = n))
@@ -1068,6 +1098,7 @@ folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # R-learner implementation
 # Loop
@@ -1131,6 +1162,7 @@ for (l in 1:K) {
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # ATE calculations
 # The ATE should be equal to the mean of the CATE
 mean(CATE)
@@ -1148,9 +1180,11 @@ mean(CATE) - 1.96 * sd(CATE) / sqrt(n)
 [1] 7962.782
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(CATE, main = "CATE")
 ```
 ```{r, echo = FALSE}
+set.seed(123456789)
 pension$CATE <- CATE
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -1158,11 +1192,13 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   labs(title = "Treatment effect vs income")
 ```
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(rowSums(Yx_hat, na.rm = TRUE)/(K-1), main = "Expected responses", xlab = "E[Y]")
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4 Testen for extreme Propensity scores
 A_hat_vector <- rowSums(A_hat, na.rm = TRUE)/(K-1)
 mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
