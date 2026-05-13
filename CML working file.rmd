@@ -293,15 +293,15 @@ In terms of heterogeneity, we find that the treatment effect is not uniform acro
 In addition, including variables in an analysis can have different effects depending on their position in the causal diagram.
 
 - *Collider*  
-  In the case of a collider *(Income → Collider ← Outcome)*, conditioning on this variable introduces collider bias.  
+  In the case of a collider *(Eligibility → Collider ← Outcome)*, conditioning on this variable introduces collider bias.  
   Conditioning on a collider opens a backdoor pathway, making the estimated effect of income biased and very difficult to interpret.
 
 - *Mediator*  
-  In the case of a mediator *(Income → Mediator → Outcome)*, part of the effect of income is captured through an indirect effect (via the mediator), and part through a direct effect (the effect observed directly).  
+  In the case of a mediator *(Eligibility → Mediator → Outcome)*, part of the effect of income is captured through an indirect effect (via the mediator), and part through a direct effect (the effect observed directly).  
   Including a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect, but only the direct effect.
 
 - *Common Cause*  
-  In the case of a common cause *(Income ← Common Cause → Outcome)*, it is appropriate to include this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of income not credible. We note that conditional exchangeability given only income does not hold if there exist common causes of income and the outcome that are not controlled for.
+  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is appropriate to include this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of income not credible. We note that conditional exchangeability given only income does not hold if there exist common causes of income and the outcome that are not controlled for.
 
 - *Variable Affecting Only Income*  
   If a variable only affects income, including it in the analysis does not introduce bias.  
@@ -399,9 +399,44 @@ sd_4   <- Q4_ATE["std.err"]
 Low_CI_4  <- coef_4 - (1.96 * sd_4)
 High_CI_4 <- coef_4 + (1.96 * sd_4)
 
+coef_1
+Low_CI_1
+High_CI_1
+
+coef_2
+Low_CI_2
+High_CI_2
+
+coef_3
+Low_CI_3
+High_CI_3
+
 coef_4
 Low_CI_4
 High_CI_4
+
+coef_1
+coef_2
+coef_3
+coef_4
+
+cat("ATE estimates by predicted CATE quartile:\n\n")
+
+cat("Q1 (lowest predicted CATE): ",
+    round(coef_1, 2),
+    " [", round(Low_CI_1, 2), ", ", round(High_CI_1, 2), "]\n", sep = "")
+
+cat("Q2: ",
+    round(coef_2, 2),
+    " [", round(Low_CI_2, 2), ", ", round(High_CI_2, 2), "]\n", sep = "")
+
+cat("Q3: ",
+    round(coef_3, 2),
+    " [", round(Low_CI_3, 2), ", ", round(High_CI_3, 2), "]\n", sep = "")
+
+cat("Q4 (highest predicted CATE): ",
+    round(coef_4, 2),
+    " [", round(Low_CI_4, 2), ", ", round(High_CI_4, 2), "]\n", sep = "")
 
 ```
 
@@ -453,7 +488,7 @@ sigma_sq_hat<-mean(term1+2*(CATEhat-atehat)*term2*term3)
 IF_sigma<- term1 - sigma_sq_hat +2 * (CATEhat - atehat) * term2 * term3
 #get standard error of sigma_sq_est
 # ss = sample size
-ss<-length(sigma_sq_hat)
+ss<-length(IF_sigma)
 sigma_sq_se<- sd(IF_sigma)/sqrt(ss)
 #get CI
 high_ci<-sigma_sq_hat+1.96*sigma_sq_se
@@ -597,6 +632,34 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
        y = expression(hat(e)(L)), x = "Income") +
   geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
+```{r}
+# Overlap plot: propensity score distribution by treatment group
+
+pension$p_hat_raw <- A_hat
+
+pension$e401_factor <- factor(
+  pension$e401,
+  levels = c(0, 1),
+  labels = c("Not eligible", "Eligible")
+)
+
+ggplot(pension, aes(x = p_hat_raw, fill = e401_factor, color = e401_factor)) +
+  geom_density(alpha = 0.3, linewidth = 0.8) +
+  geom_vline(xintercept = c(0.05, 0.95), linetype = "dashed", color = "red") +
+  theme_minimal() +
+  labs(
+    title = "Propensity score overlap by treatment group",
+    x = expression(hat(P)(A == 1 ~ "|" ~ L)),
+    y = "Density",
+    fill = "401(k) eligibility",
+    color = "401(k) eligibility"
+  )
+```
+
+
+
+
+
 (The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.)
 
 To assess treatment effect heterogeneity, the variance of the CATE was calculated as given in the assignment. This gives us an idea of the extent as to which the impact of 401(k) eligibility on the net amount of financial assets is different across households with different covariate characteristics. If the effect is close to 0, then we would conclude that the treatment effect is homogenous for households characterized by similar covariates.
