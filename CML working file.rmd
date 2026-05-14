@@ -8,6 +8,7 @@ pdf_document:
 header-includes:
   - \usepackage{tikz}
 ---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(hdm)
@@ -71,7 +72,7 @@ for (k in 1:K) {
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 
 # Propensity scores
 pension$A_hat <- A_hat
@@ -98,7 +99,7 @@ pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # Determining the ATE and his confidence interval
 ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
@@ -127,7 +128,7 @@ To assess the stability of the inverse probability weights, the distribution of 
 To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (https://grf-labs.github.io/grf/reference/causal_forest.html).
 
 ```{r fig-cate-inc-smooth, echo=FALSE, fig.cap="Treatment effect vs income (smoothing spline)"}
-set.seed(123456789)
+set.seed(4321)
 
 # CATE modelled using smoothing spline (lambda=1)
 # spline fit
@@ -160,7 +161,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r fig-cate-inc-lm, echo=FALSE, fig.cap="Treatment effect vs income (linear model)"}
-set.seed(123456789)
+set.seed(4321)
 # CATE modelled using linear model
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -172,7 +173,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r fig-cate-inc-unc, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -186,12 +187,12 @@ hist(pension$CATE, main = "CATE", xlab = "CATE")
 ```
 
 ```{r fig-A-hist, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 
 ```{r fig-A-inc, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 
 ggplot(pension, aes(x = inc, y = A_hat)) +
   geom_point(alpha = 0.2) +
@@ -551,11 +552,6 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
        y = expression(hat(e)(L)), x = "Income") +
   geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
-
-
-
-
-
 
 (The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.)
 
