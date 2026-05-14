@@ -23,7 +23,7 @@ library(ggplot2)
 
 ```{r, echo = FALSE}
 # Cross-fitting
-set.seed(123456789)
+set.seed(4321)
 # Reference doc:
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
@@ -73,7 +73,7 @@ for (k in 1:K) {
 
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 pension$A_hat <- A_hat
 
 ggplot(pension, aes(x = inc, y = A_hat)) +
@@ -100,7 +100,7 @@ ATE_CI_high = 10060.38
 
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # 1a) Train Causal Forest
 causal_forest <- causal_forest(X = X, Y = Y, W = A,
   Y.hat = Y_X_hat,
@@ -111,7 +111,7 @@ causal_forest <- causal_forest(X = X, Y = Y, W = A,
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # Extract CATE and variances
 tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
@@ -119,7 +119,7 @@ pension$CATE <- tau.hat.oob$predictions
 
 Hieronder CATE benaderen met smoothing spline (lambda=1)
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # Smoother
 # spline fit
 fit <- smooth.spline(x = pension$inc,
@@ -136,7 +136,7 @@ pred <- predict(fit, x = x_grid)
 ```
 
 ```{r fig-cate-inc-smooth, echo=FALSE, fig.cap="Treatment effect vs income (smoothing spline)"}
-set.seed(123456789)
+set.seed(4321)
 # plot
 # dataframe maken voor ggplot
 pred_df <- data.frame(
@@ -155,7 +155,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 En gewoon met lineaire regressie.
 ```{r fig-cate-inc-lm, echo=FALSE, fig.cap="Treatment effect vs income (linear model)"}
-set.seed(123456789)
+set.seed(4321)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth(method = "lm",
@@ -166,7 +166,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
 
 # 95% betrouwbaarheidsintervallen
@@ -175,7 +175,7 @@ pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -184,7 +184,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
@@ -192,17 +192,17 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r fig-cate-hist, echo=FALSE, fig.cap="Histogram of the predicted CATE values"}
-set.seed(123456789)
+set.seed(4321)
 hist(pension$CATE, main = "CATE", xlab = "CATE")
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 hist(Y_X_hat, main = "Expected responses", xlab = "Y")
 hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 hist(A_hat, main = "Propensity scores")
 A_hat_raw <- A_hat  
 delta <- 0.05
@@ -231,12 +231,12 @@ saveRDS(causal_forest, file = "causal_forest_model_ex1_142_20260509final.rds")
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 causal_forest2 <- readRDS("causal_forest_model_ex1.rds")
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -244,7 +244,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 ggplot(pension, aes(x = age, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -253,7 +253,7 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 Determining the ATE and his confidence interval.
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
                                method = "AIPW")
@@ -262,12 +262,34 @@ ate
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
 
+```{r}
+# Overlap plot: propensity score distribution by treatment group
 
+pension$p_hat_raw <- A_hat
+
+pension$e401_factor <- factor(
+  pension$e401,
+  levels = c(0, 1),
+  labels = c("Not eligible", "Eligible")
+)
+
+ggplot(pension, aes(x = p_hat_raw, fill = e401_factor, color = e401_factor)) +
+  geom_density(alpha = 0.3, linewidth = 0.8) +
+  geom_vline(xintercept = c(0.05, 0.95), linetype = "dashed", color = "red") +
+  theme_minimal() +
+  labs(
+    title = "Propensity score overlap by treatment group",
+    x = expression(hat(P)(A == 1 ~ "|" ~ L)),
+    y = "Density",
+    fill = "401(k) eligibility",
+    color = "401(k) eligibility"
+  )
+```
 
 #1a) interpretation
 
@@ -364,7 +386,7 @@ In addition, including variables in an analysis can have different effects depen
 \end{center}
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 #Q2
 pension$quartiles <- ntile(pension$CATE, 4)
 
@@ -447,7 +469,7 @@ In terms of treatment heterogeneity, we find that the threatment effects for the
 Thus, although the confidence intervals still slightly overlap, still a non-linear treatment effect is suggested. The causal forest did thus succesfully find a sub-population (likely those with higher incomes or higher saving preferences), for which the tax-advantaged saving mechanism is effective.
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 #Q3
 
 ## CATE predictions (E(Y1-Y0)/L)
@@ -512,7 +534,7 @@ sigma_sq_hat-1.96*sigma_sq_se
 
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 #Extreme influence function diagnostics
 summary(IF_sigma)
 
@@ -632,29 +654,7 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
        y = expression(hat(e)(L)), x = "Income") +
   geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
-```{r}
-# Overlap plot: propensity score distribution by treatment group
 
-pension$p_hat_raw <- A_hat
-
-pension$e401_factor <- factor(
-  pension$e401,
-  levels = c(0, 1),
-  labels = c("Not eligible", "Eligible")
-)
-
-ggplot(pension, aes(x = p_hat_raw, fill = e401_factor, color = e401_factor)) +
-  geom_density(alpha = 0.3, linewidth = 0.8) +
-  geom_vline(xintercept = c(0.05, 0.95), linetype = "dashed", color = "red") +
-  theme_minimal() +
-  labs(
-    title = "Propensity score overlap by treatment group",
-    x = expression(hat(P)(A == 1 ~ "|" ~ L)),
-    y = "Density",
-    fill = "401(k) eligibility",
-    color = "401(k) eligibility"
-  )
-```
 
 
 
@@ -841,274 +841,11 @@ Overall, as the confidence intervals overlap with 0, we cannot conclude treatmen
 
 # Q4:
 
-Q4 met DR-learner
-```{r, echo = FALSE}
-set.seed(123456789)
-# Q4
-# DR-learner implementation
-# Assumptions
-# 1) heterogeneity only in income (final regression step)
-# 2) Doubly robust: als 1 van de nuisance paremeters goed geschat is, is het goed
-
-# Reference: solutions of lab Causal Prediction
-n <- nrow(X)
-K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
-
-variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
-          "marr", "twoearn", "db", "pira", "hown")
-
-Y <- pension$net_tfa
-A <- pension$e401
-X <- pension[, c("age", "inc", "fsize", "educ", 
-                                 "marr", "twoearn", "db", "pira", "hown")]
-AX <- pension[, c("e401", "age", "inc", "fsize", "educ", 
-                               "marr", "twoearn", "db", "pira", "hown")]
-
-eps <- 0.01 # epsilon for truncation of propensity-scores
-
-Y1_hat <- matrix(NA, nrow = n, ncol = K)
-Y0_hat <- matrix(NA, nrow = n, ncol = K)
-A_hat <- matrix(NA, nrow = n, ncol = K)
-C_DR <- matrix(NA, nrow = n, ncol = K)
-CATE <- rep(NA, n)
-```
-
-Q4 met DR-learner
-
-```{r, echo = FALSE}
-set.seed(123456789)
-# Q4
-# Random folds
-# folds <- sample(rep(1:K, length.out = n))
-
-# Stratified folds
-folds <- rep(NA, n)
-
-# indices per class
-idx0 <- which(A == 0)
-idx1 <- which(A == 1)
-
-# random sampling within classes
-idx0 <- sample(idx0)
-idx1 <- sample(idx1)
-
-# folds
-folds[idx0] <- rep(1:K, length.out = length(idx0))
-folds[idx1] <- rep(1:K, length.out = length(idx1))
-```
-
-```{r, echo = FALSE}
-set.seed(123456789)
-# Q4
-# DR-learner implementation
-# Loop
-
-for (l in 1:K) {
-  
-  k_range <- 1:K
-  k_range <- k_range[k_range != l]
-  
-  for (k in k_range) {
-    train_k <- folds %in% k_range & folds != k
-    test_k <- folds == k
-    
-    # E[Y|X, A=1]
-    rf_Y1 <- regression_forest(X[train_k & A==1, ], Y[train_k & A==1])
-    Y1_hat[test_k, l] <- predict(rf_Y1, X[test_k, ])$predictions
-    
-    # E[Y|X, A=0]
-    rf_Y0 <- regression_forest(X[train_k & A==0, ], Y[train_k & A==0])
-    Y0_hat[test_k, l] <- predict(rf_Y0, X[test_k, ])$predictions
-    
-    # E[A|X]
-    rf_A <- regression_forest(X[train_k, ], A[train_k])
-    A_hat_temp <- predict(rf_A, X[test_k, ])$predictions
-    A_hat[test_k, l] <- pmin(pmax(A_hat_temp, eps), 1 - eps)
-    
-    # pseudooutcomes C
-    C_DR[test_k, l] <- A[test_k]/A_hat[test_k, l] * (Y[test_k] - Y1_hat[test_k, l]) - (1-A[test_k])/(1-A_hat[test_k, l]) * (Y[test_k] - Y0_hat[test_k, l]) + Y1_hat[test_k, l] - Y0_hat[test_k, l]
-    
-  }
-  
-  train <- folds != l
-  test <- folds == l
-  
-  # training dataframe
-  train_df <- data.frame(
-    C_DR = C_DR[train, l],
-    inc = X[train, "inc"]
-  )
-  
-  # omit columns with NA values before regression
-  # train_df <- na.omit(train_df)#
-  
-  # Regress the pseudooutcomes in the combined training data set
-  lm_fit <- lm(C_DR ~ inc, data = train_df)
-
-  # test dataframe
-  test_df <- data.frame(
-    inc = X[test, "inc"]
-  )
-
-  # Predict CATE on the test set
-  CATE[test] <- predict(lm_fit, newdata = test_df)
-}
-
-
-```
-
-```{r, echo = FALSE}
-set.seed(123456789)
-l <- 1
-train <- folds != l
-test <- folds == l
-
-# training dataframe
-train_df <- data.frame(
-  C_DR = C_DR[train, l],
-  inc = X[train, "inc"]
-)
-
-# omit columns with NA values before regression
-# train_df <- na.omit(train_df)
-
-# Plot
-ggplot(train_df, aes(x = inc, y = C_DR)) +
-geom_point(alpha = 0.2) +
-geom_smooth(method = "lm") +
-coord_cartesian(ylim = c(0, 60000)) +
-labs(title = "Treatment effect vs income")
-
-```
-```{r, echo = FALSE}
-l <- 2
-train <- folds != l
-test <- folds == l
-
-# training dataframe
-train_df <- data.frame(
-  C_DR = C_DR[train, l],
-  inc = X[train, "inc"]
-)
-
-# omit columns with NA values before regression
-# train_df <- na.omit(train_df)
-
-# Plot
-ggplot(train_df, aes(x = inc, y = C_DR)) +
-geom_point(alpha = 0.2) +
-geom_smooth(method = "lm") +
-coord_cartesian(ylim = c(0, 60000)) +
-labs(title = "Treatment effect vs income")
-
-```
-
-
-```{r, echo = FALSE}
-set.seed(123456789)
-# ATE calculations
-# ATE
-C_DR_av <- rowSums(C_DR, na.rm = TRUE)/(K-1)
-ate_hat <- mean(C_DR_av)
-
-# The ATE should be equal to the mean of the CATE
-mean(CATE)
-se_hat  <- sd(C_DR_av) / sqrt(n)
-```
-DR-learner
-1e run
-se_hat
-[1] 1123.617
-mean(pseudooutcomes)
-[1] 7897.361
-mean(CATE)
-[1] 7888.084
-
-Boven- en ondergrens ATE
-[1] 10099.65
-[1] 5695.072
-
-2e run
-se_hat
-[1] 1167.328
-mean(pseudooutcomes)
-[1] 7878.258
-mean(CATE)
-[1] 7885.001
-
-Boven- en ondergrens ATE
-[1] 10166.22
-[1] 5590.296
-
-Stratified run
-se_hat
-[1] 1142.036
-mean(pseudooutcomes)
-[1] 7888.663
-mean(CATE)
-[1] 7868.564
-
-Boven- en ondergrens ATE
-[1] 10127.05
-[1] 5650.273
-
-```{r, echo = FALSE}
-set.seed(123456789)
-# 95% confidence intervals
-ate_hat + 1.96 * se_hat
-ate_hat - 1.96 * se_hat
-```
-
-```{r, echo = FALSE}
-set.seed(123456789)
-hist(CATE, main = "CATE")
-```
-```{r, echo = FALSE}
-set.seed(123456789)
-# plot 95% CI's
-pension$CATE <- CATE
-ggplot(pension, aes(x = inc, y = CATE))  +
-  geom_smooth() +
-  labs(title = "Treatment effect vs income")
-```
-
-```{r, echo = FALSE}
-set.seed(123456789)
-ggplot(pension, aes(x = inc, y = CATE)) +
-  geom_point(alpha = 0.2) +
-  geom_smooth() +
-  labs(title = "Treatment effect vs income")
-```
-
-```{r, echo = FALSE}
-set.seed(123456789)
-ggplot(pension, aes(x = inc, y = CATE)) +
-  geom_point(alpha = 0.2) +
-  geom_smooth() +
-  labs(title = "Treatment effect vs income")
-```
-
-```{r, echo = FALSE}
-set.seed(123456789)
-hist(rowSums(Y1_hat, na.rm = TRUE)/(K-1), main = "Expected responses with treatment", xlab = "E[Y1]")
-hist(rowSums(Y0_hat, na.rm = TRUE)/(K-1), main = "Expected responses without treatment", xlab = "E[Y0]")
-hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
-```
-
-We estimated the conditional average treatment effect (CATE) of eligibility for a 401(k) plan on net financial assets using a orthogonal doubly robust (DR) learner. The nuisance components — the propensity score and the conditional outcome models — were estimated using random forests, using all covariates n order to improve confounding adjustment. In the final-stage the doubly robust pseudo-outcomes were modelled on income only, using a ordinary linear model.
-
-Compared to the earlier causal forest approach, the chosen DR-learner introduces an additional modeling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies smoothly and approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically and therefore allow for more flexible nonlinear patterns and interactions. The advantage of using in the final stage a linear model instead of a Causal Forest is improved interpretability and easier visualization of the treatment effect as a function of income.
-
-
-
-
-Before starting on this question, which orthogonal learner that would be used had to be decided. While both DR learner and the R-learner both are theoretically sound to use in this case, it was ultimately decided to implement the R-learner. The main reason for this choice is related to the overlap between the propensity scores of the treated and control groups. On the ovelap plot, a large overlap can be observed between the propensity scores of the two groups, which suggests that the R-learner would be a good choice. The R-learner is designed to handle situations with good overlap and can provide more efficient estimates of treatment effect heterogeneity in such cases. Next to this, it is also seen to be more robust to to local failures of overlap, which occurs in the more extreme cases of this overlap plot.
-
 Before starting on this question, which orthogonal learner that would be used had to be decided. While both DR learner and the R-learner both are theoretically sound to use in this case, it was ultimately decided to implement the R-learner. The R-Learner was chosen because it is more robust to the local overlap failures visible in the propensity score plot. Where p̂ is extreme, the DR-Learner amplifies errors through IPW division and requires explicit clipping, introducing bias. The R-Learner instead naturally downweights those observations via W_R = (Aᵢ − Âᵢ)², requiring no clipping at all.
 
 Q4 met R-learner
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # Q4
 # R-learner implementation
 # Assumptions
@@ -1141,7 +878,7 @@ CATE <- rep(NA, n)
 
 Q4 met R-learner
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # Q4
 # Random folds
 # folds <- sample(rep(1:K, length.out = n))
@@ -1163,7 +900,7 @@ folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # Q4
 # R-learner implementation
 # Loop
@@ -1227,29 +964,19 @@ for (l in 1:K) {
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # ATE calculations
 # The ATE should be equal to the mean of the CATE
 mean(CATE)
 se_hat  <- sd(CATE) / sqrt(n)
 ```
 
-R-learner 1ste run
-mean(CATE)
-[1] 8049.97
-sd(CATE) / sqrt(n)
-[1] 44.48384
-mean(CATE) + 1.96 * sd(CATE) / sqrt(n)
-[1] 8137.159
-mean(CATE) - 1.96 * sd(CATE) / sqrt(n)
-[1] 7962.782
-
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 hist(CATE, main = "CATE")
 ```
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 pension$CATE <- CATE
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -1257,19 +984,22 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   labs(title = "Treatment effect vs income")
 ```
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 hist(rowSums(Yx_hat, na.rm = TRUE)/(K-1), main = "Expected responses", xlab = "E[Y]")
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
 
 ```{r, echo = FALSE}
-set.seed(123456789)
+set.seed(4321)
 # Q4 Testen for extreme Propensity scores
 A_hat_vector <- rowSums(A_hat, na.rm = TRUE)/(K-1)
 mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
 mean(A_hat_vector < 0.05 | A_hat_vector > 0.95)
 ```
-mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
-[1] 0
-mean(A_hat_vector < 0.05 | A_hat_vector > 0.95)
-[1] 0.008976299
+
+We estimated the CATE of eligibility for a 401(k) plan on net financial assets using an R-Learner. The nuisance components — the conditional outcome model and the propensity score — were estimated using random forests with all covariates to improve confounding adjustment. In the final stage, the R-Learner pseudo-outcomes were modelled on income only using an ordinary weighted linear model.
+
+Compared to the approach used in question 3, where the model gives us the existence of the heterogeneity and attempts to quantify this value, the R-Learner tells how this heterogeneity varies with income, giving a more informative and directly answers the research question about the income-dependent treatment effect.
+
+Compared to the earlier causal forest approach, the chosen R-Learner introduces an additional modelling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically, allowing for more flexible nonlinear patterns and interactions. The advantage of using a linear model in the final stage is improved interpretability and easier visualisation of the treatment effect as a function of income. If instead of linear models, other models would have been used in the approach, then the interpretability of the relationship between income and the treatment effect would have been more difficult, and it would have been more difficult to visualise this relationship. However, using a linear model also introduces the risk of model misspecification if the true relationship is nonlinear, which could lead to biased estimates of the treatment effect heterogeneity. 
+
