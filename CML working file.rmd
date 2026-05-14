@@ -723,6 +723,30 @@ and a 95% confidence interval was constructed as
 
 Ultimately, we inspected the estimated influence-function values and the inverse probability weights as diagnostics, to see if our estimates and CI's were driven by those.
 
+Our estimate for the variance is approximately \(\hat{\sigma}^2 = `r formatC(sigma_sq_hat, format = "e", digits = 2)`\), (SE = `r formatC(sigma_sq_se, format = "e", digits = 2)`), with a 95% confidence interval of [`r formatC(low_ci, format = "e", digits = 2). As \(\sigma^2\) denotes the variance, this obviously cannot be negative in reality. However, as we use the debiased estimator, it can be shown that estimates are not constrained to be positive. To see this, consider that the first term of the EIF should always be positive (as it is squared), however if the correction term is larger than the first term, then the found estimate can be negative. 
+
+A variance estimate of 0 would indicate a homogenous treatment effect, while an estimate different from 0 indicates a heterogenous treatment effect. Our estimate of the variance is thus positive, which would normally be indicative of a heterogenous treatment effect. However, we can also see that there are very large confidence intervals, which include 0. As this is the case, this implies that we cannot reject the null hypothesis of a homogenous treatment effect, which means we cannot conclude that there is significant heterogeneity in the impact of being eligible for 401(k) schemes on net financial assets for different households.
+
+Because the confidence intervals are rather large; (\(\hat{\sigma}^2 = `r round(sigma_sq_hat, 2)`\), 95% CI 
+
+[`r round(low_ci, 2)`, `r round(high_ci, 2)`]), we also inspect what drives this value. For this purpose, we inspect whether this result is caused by a few observations with extreme EIF values, which we define as values in the top percent of efficient influence function values. We find that the largest EIF value equals 
+
+`r round(max(abs(IF_sigma), na.rm = TRUE), 2)`, while the 99th percentile equals 
+
+`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2), which we consider as extreme.
+
+These extreme EIF values can originate from three 'sources', as can be derived from the formula. First, they may come from large deviations of the estimated CATE from the ATE. Second, they can come from extreme propensity scores. Third, they can result from large outcome residuals. Hence, we compare these for the top 1% vs top 99% of the population.
+
+As shown in Table X, the extreme EIF values are the result of large residuals. The mean absolute residual among the top 1% most influential observations is 
+
+`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+
+`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Remaining 99%"], 2)` for the rest of the sample. These extreme values for these observations are the result of higher net financial assets on average: 
+
+`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+
+`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. On the other hand, the CATE-ATE deviations are also large, ... quod interpretatie? The propensity scores among these extreme EIF values are rather normal.
+
 # Main conclusion
 
 Our estimate is negative, approximately −6.68×10^6. As σ^2 denotes the variance, this cannot be negative. However, the debiased estimator is not constrained to be non-negative in finite samples, so a negative estimate can happen if the heterogeneity is small relative to the sampling variability. The 95% confidence interval includes 0, and this thus means that we cannot concldue that there is significant heterogeneity in the impact of being eligible for 401(k) schemes for different households.
@@ -730,6 +754,52 @@ Our estimate is negative, approximately −6.68×10^6. As σ^2 denotes the varia
 As our estimates are rather large, we also took a deeper look at the values for the efficient influence functions. This check indicated that certain observations had large absolute influence function values. More specifically, these values are mostly driven by households with a high amount of net financial assets (and thus large residuals). We further investigated whether the propensity scores of these observations were close to 0 or 1, and this was not the case. Thus, these values were caused by the very large residual values caused by the right-skewed distribution, not by the propensity scores.
 
 Overall, as the confidence intervals overlap with 0, we cannot conclude treatment effect heterogeneity. However, as these confidence intervals remain very broad, it is also difficult to conclude that there is no heterogeneity. Therefore, it is difficult to take conclusions, as inference is impacted by specific high-asset households.
+
+```{r}
+cate_dev <- CATEhat - atehat
+correction_term <- 2 * cate_dev * term2 * term3
+
+IF_drivers <- data.frame(
+  abs_IF = abs(IF_sigma),
+  abs_CATE_dev = abs(cate_dev),
+  abs_IPW = abs(term2),
+  abs_residual = abs(term3),
+  net_tfa = Y,
+  propensity = propscore
+)
+
+cut_IF_99 <- quantile(IF_drivers$abs_IF, 0.99, na.rm = TRUE)
+
+IF_drivers <- IF_drivers %>%
+  mutate(
+    group = ifelse(abs_IF >= cut_IF_99,
+                   "Top 1% |IF|",
+                   "Remaining 99%")
+  )
+
+IF_report_table <- IF_drivers %>%
+  group_by(group) %>%
+  summarise(
+    n = n(),
+    `Mean net financial assets` = mean(net_tfa, na.rm = TRUE),
+    `Mean |residual|` = mean(abs_residual, na.rm = TRUE),
+    `Mean |CATE - ATE|` = mean(abs_CATE_dev, na.rm = TRUE),
+    `Mean |IPW contrast|` = mean(abs_IPW, na.rm = TRUE),
+    `Propensity range` = paste0(
+      round(min(propensity, na.rm = TRUE), 2),
+      "–",
+      round(max(propensity, na.rm = TRUE), 2)
+    ),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(group == "Top 1% |IF|"))
+
+knitr::kable(
+  IF_report_table,
+  digits = 2,
+  caption = "Comparison of the most influential observations with the rest of the sample"
+)
+```
 
 
 # 4) Estimation of the causal effect using a orthogonal R-learner
