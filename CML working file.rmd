@@ -838,6 +838,9 @@ As our estimates are rather large, we also took a deeper look at the values for 
 
 Overall, as the confidence intervals overlap with 0, we cannot conclude treatment effect heterogeneity. However, as these confidence intervals remain very broad, it is also difficult to conclude that there is no heterogeneity. Therefore, it is difficult to take conclusions, as inference is impacted by specific high-asset households.
 
+
+# Q4:
+
 Q4 met DR-learner
 ```{r, echo = FALSE}
 set.seed(123456789)
@@ -1097,6 +1100,11 @@ We estimated the conditional average treatment effect (CATE) of eligibility for 
 Compared to the earlier causal forest approach, the chosen DR-learner introduces an additional modeling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies smoothly and approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically and therefore allow for more flexible nonlinear patterns and interactions. The advantage of using in the final stage a linear model instead of a Causal Forest is improved interpretability and easier visualization of the treatment effect as a function of income.
 
 
+
+
+Before starting on this question, which orthogonal learner that would be used had to be decided. While both DR learner and the R-learner both are theoretically sound to use in this case, it was ultimately decided to implement the R-learner. The main reason for this choice is related to the overlap between the propensity scores of the treated and control groups. On the ovelap plot, a large overlap can be observed between the propensity scores of the two groups, which suggests that the R-learner would be a good choice. The R-learner is designed to handle situations with good overlap and can provide more efficient estimates of treatment effect heterogeneity in such cases. Next to this, it is also seen to be more robust to to local failures of overlap, which occurs in the more extreme cases of this overlap plot.
+
+Before starting on this question, which orthogonal learner that would be used had to be decided. While both DR learner and the R-learner both are theoretically sound to use in this case, it was ultimately decided to implement the R-learner. The R-Learner was chosen because it is more robust to the local overlap failures visible in the propensity score plot. Where p̂ is extreme, the DR-Learner amplifies errors through IPW division and requires explicit clipping, introducing bias. The R-Learner instead naturally downweights those observations via W_R = (Aᵢ − Âᵢ)², requiring no clipping at all.
 
 Q4 met R-learner
 ```{r, echo = FALSE}
