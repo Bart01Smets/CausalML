@@ -2,7 +2,9 @@
 title: "Causal Machine Learning assignment"
 author: "Thomas Sertijn, Bart Smets, Ilja Van Bever"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: 
+pdf_document:
+  latex_engine: xelatex
 header-includes:
   - \usepackage{tikz}
 ---
@@ -21,12 +23,10 @@ library(ggplot2)
 
 ```{r, echo = FALSE}
 # Cross-fitting
-
+set.seed(123456789)
 # Reference doc:
 # https://grf-labs.github.io/grf/reference/causal_forest.html
 # https://grf-labs.github.io/grf/reference/regression_forest.html
-
-set.seed(123456789)
 
 variables <- c("net_tfa", "e401", "age", "inc", "fsize", "educ", 
           "marr", "twoearn", "db", "pira", "hown")
@@ -73,6 +73,7 @@ for (k in 1:K) {
 
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 pension$A_hat <- A_hat
 
 ggplot(pension, aes(x = inc, y = A_hat)) +
@@ -97,18 +98,20 @@ ATE_sd: 1106.29
 ATE_CI_low = 5723.7
 ATE_CI_high = 10060.38
 
+
 ```{r, echo = FALSE}
+set.seed(123456789)
 # 1a) Train Causal Forest
 causal_forest <- causal_forest(X = X, Y = Y, W = A,
   Y.hat = Y_X_hat,
   W.hat = A_hat,
   num.trees = 2000,
-  min.node.size = 5#,
-  #seed = 123
+  min.node.size = 5
 )
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Extract CATE and variances
 tau.hat.oob <- predict(causal_forest, estimate.variance = TRUE)
 pension$CATE <- tau.hat.oob$predictions
@@ -116,6 +119,7 @@ pension$CATE <- tau.hat.oob$predictions
 
 Hieronder CATE benaderen met smoothing spline (lambda=1)
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Smoother
 # spline fit
 fit <- smooth.spline(x = pension$inc,
@@ -131,7 +135,8 @@ pred <- predict(fit, x = x_grid)
 
 ```
 
-```{r, echo = FALSE}
+```{r fig-cate-inc-smooth, echo=FALSE, fig.cap="Treatment effect vs income (smoothing spline)"}
+set.seed(123456789)
 # plot
 # dataframe maken voor ggplot
 pred_df <- data.frame(
@@ -149,7 +154,8 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   labs(title = "Treatment effect vs income")
 ```
 En gewoon met lineaire regressie.
-```{r, echo = FALSE}
+```{r fig-cate-inc-lm, echo=FALSE, fig.cap="Treatment effect vs income (linear model)"}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth(method = "lm",
@@ -160,6 +166,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 pension$CATE_se <- sqrt(tau.hat.oob$variance.estimates)
 
 # 95% betrouwbaarheidsintervallen
@@ -168,6 +175,7 @@ pension$CATE_upper <- pension$CATE + 1.96 * pension$CATE_se
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -176,22 +184,25 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # plot 95% CI's
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_smooth(aes(ymin = CATE_lower, ymax = CATE_upper), stat = "smooth") +
   labs(title = "Treatment effect vs income (with uncertainty)")
 ```
 
-
-
-```{r, echo = FALSE}
+```{r fig-cate-hist, echo=FALSE, fig.cap="Histogram of the predicted CATE values"}
+set.seed(123456789)
 hist(pension$CATE, main = "CATE", xlab = "CATE")
-hist(Y_X_hat, main = "Expected responses", xlab = "Y")
-hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
 ```
 
 ```{r, echo = FALSE}
-
+set.seed(123456789)
+hist(Y_X_hat, main = "Expected responses", xlab = "Y")
+hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
+```
+```{r, echo = FALSE}
+set.seed(123456789)
 hist(A_hat, main = "Propensity scores")
 A_hat_raw <- A_hat  
 delta <- 0.05
@@ -220,10 +231,12 @@ saveRDS(causal_forest, file = "causal_forest_model_ex1_142_20260509final.rds")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 causal_forest2 <- readRDS("causal_forest_model_ex1.rds")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -231,6 +244,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = age, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -239,6 +253,7 @@ ggplot(pension, aes(x = age, y = CATE)) +
 
 Determining the ATE and his confidence interval.
 ```{r, echo = FALSE}
+set.seed(123456789)
 ate <- average_treatment_effect(causal_forest,
                                target.sample = "all",
                                method = "AIPW")
@@ -247,6 +262,7 @@ ate
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
@@ -257,14 +273,13 @@ ci_high <- ate[1] + 1.96 * ate[2]
 
 The causal forest analysis reveals a substantial and statistically significant effect of eligibility for enrollment in a 401(k) plan on accumulated net financial assets. The estimated Average Treatment Effect (ATE) equals 7,892.037, indicating that individuals who are eligible for a 401(k) plan accumulate, on average, approximately \$7,892.037 more in net financial assets than non-eligible individuals. The estimated standard error is \$1,106.29, resulting in a 95% confidence interval of [\$5,723.7, \$10,060.38].
 
-In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals. Figure ... presents a histogram of the predicted CATE values. Furthermore, the estimated CATE was plotted against income, revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
+In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals. Figure \@ref(fig:fig-cate-hist) presents a histogram of the predicted CATE values. Most individuals have positive CATE values, although negative values are also observed. Furthermore, the estimated CATE was plotted against income, revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
 
-To better characterize this relationship, both a linear regression model and a smoothing spline regression (with \lambda = 1) were fitted. The corresponding trends are displayed in Figures ... and .... While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
+To better characterize this relationship, both a linear regression model and a smoothing spline regression (with $\lambda$ = 1) were fitted. The corresponding trends are displayed in Figures \@ref(fig:fig-cate-inc-smooth) and \@ref(fig:fig-cate-inc-lm) While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
 
 To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram. No propensity scores below 0.01 or above 0.99 were observed, and only 2.2% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed. This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate. This can be viewed as an example of the bias--variance trade-off. Although trimming extreme propensity scores can reduce the variance of the estimator by limiting the influence of highly weighted observations, it may simultaneously introduce additional bias by systematically excluding specific subpopulations from the analysis.
 
-To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (REFERENCE).
-
+To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (https://grf-labs.github.io/grf/reference/causal_forest.html).
 
 
 Nog stukje Bart
@@ -273,10 +288,6 @@ Using causal forests with cross-fitting (5 folds), we find the average treatment
 In terms of heterogeneity, we find that the treatment effect is not uniform across the population. There is a large, non-linear relationship, as richer individuals have a larger increase in net financial assets when becoming eligible for 401(k) than poorer individuals. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
 
 #1b)
-## Non-collapsibility in Non-linear Models
-
-<!-- First, it is important to note that adding variables to non-linear models generally leads to changes in coefficients, even in the absence of confounding. This phenomenon is known as *non-collapsibility*: marginal and conditional effect measures differ even in the absence of confounding. -->
-
 ## Role of Additional Variables in a Causal Diagram
 
 In addition, including variables in an analysis can have different effects depending on their position in the causal diagram.
@@ -353,7 +364,7 @@ In addition, including variables in an analysis can have different effects depen
 \end{center}
 
 ```{r, echo = FALSE}
-
+set.seed(123456789)
 #Q2
 pension$quartiles <- ntile(pension$CATE, 4)
 
@@ -426,42 +437,18 @@ cat("Q3: ",
 cat("Q4 (highest predicted CATE): ",
     round(coef_4, 2),
     " [", round(Low_CI_4, 2), ", ", round(High_CI_4, 2), "]\n", sep = "")
+
 ```
 
 First, we can see that the treatment effect in all four quartiles is positive. This suggests that, on average, 401(k) eligibility has a positive impact on net financial assets across all four quartiles. 
 
-In terms of treatment heterogeneity, we find that the treatment effects for the bottom three quartiles are relatively similar, ranging from $5,826 to $6,437. However, for the 25% of individuals predicted to benefit the most, the treatment effect almost doubles. 
+In terms of treatment heterogeneity, we find that the threatment effects for the bottom three quartiles are relatively similar, ranging from $5,826 to $6,437. However, for the 25% of individuals predicted to benefit the most, the treatment effect almost doubles. 
 
 Thus, although the confidence intervals still slightly overlap, still a non-linear treatment effect is suggested. The causal forest did thus succesfully find a sub-population (likely those with higher incomes or higher saving preferences), for which the tax-advantaged saving mechanism is effective.
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 #Q3
-
-# Overlap plot: propensity score distribution by treatment group
-
-pension$p_hat_raw <- A_hat
-
-pension$e401_factor <- factor(
-  pension$e401,
-  levels = c(0, 1),
-  labels = c("Not eligible", "Eligible")
-)
-
-ggplot(pension, aes(x = p_hat_raw, fill = e401_factor, color = e401_factor)) +
-  geom_density(alpha = 0.3, linewidth = 0.8) +
-  geom_vline(xintercept = c(0.05, 0.95), linetype = "dashed", color = "red") +
-  theme_minimal() +
-  labs(
-    title = "Propensity score overlap by treatment group",
-    x = expression(hat(P)(A == 1 ~ "|" ~ L)),
-    y = "Density",
-    fill = "401(k) eligibility",
-    color = "401(k) eligibility"
-  )
-
-
-
-
 
 ## CATE predictions (E(Y1-Y0)/L)
 CATEhat<-pension$CATE
@@ -480,7 +467,7 @@ var <- Y_X_hat
 #Get actual average treatment effect (E(Y1-Y0))
 atehat<-average_treatment_effect(causal_forest)["estimate"]
 #Get actual average treatment effect (E(Y1-Y0))
-#atehat <- as.numeric(average_treatment_effect(causal_forest)["estimate"])
+atehat <- as.numeric(average_treatment_effect(causal_forest)["estimate"])
 ## E(Y/A,L)
 Y_AX_hat
 
@@ -512,6 +499,380 @@ cat("Estimated Variance (Sigma^2):", sigma_sq_hat, "\n")
 cat("95% CI: [", low_ci, ",", high_ci, "]\n")
 ```
 
+```{r, echo = FALSE}
+# ============================================================
+# 1. Inspect largest absolute influence-function values
+# ============================================================
+
+correction <- 2 * (CATEhat - atehat) * term2 * term3
+
+diag_IF <- data.frame(
+  row_id = seq_along(Y),
+  net_tfa = Y,
+  A = A,
+  CATE = CATEhat,
+  CATE_minus_ATE = CATEhat - atehat,
+  propensity = propscore,
+  ipw_contrast = term2,
+  residual = term3,
+  correction = correction,
+  IF_sigma = IF_sigma,
+  abs_IF_sigma = abs(IF_sigma)
+)
+
+top_IF <- diag_IF %>%
+  arrange(desc(abs_IF_sigma)) %>%
+  slice(1:10)
+
+knitr::kable(
+  top_IF,
+  digits = 2,
+  caption = "Ten observations with largest absolute influence-function values"
+)
+
+# ============================================================
+# 2. Decompose influence-function components
+# ============================================================
+
+component_summary <- data.frame(
+  Component = c(
+    "Squared CATE deviation",
+    "Correction term",
+    "Influence function"
+  ),
+  Mean = c(
+    mean(term1, na.rm = TRUE),
+    mean(correction, na.rm = TRUE),
+    mean(IF_sigma, na.rm = TRUE)
+  ),
+  SD = c(
+    sd(term1, na.rm = TRUE),
+    sd(correction, na.rm = TRUE),
+    sd(IF_sigma, na.rm = TRUE)
+  ),
+  Min = c(
+    min(term1, na.rm = TRUE),
+    min(correction, na.rm = TRUE),
+    min(IF_sigma, na.rm = TRUE)
+  ),
+  Max = c(
+    max(term1, na.rm = TRUE),
+    max(correction, na.rm = TRUE),
+    max(IF_sigma, na.rm = TRUE)
+  ),
+  Q99_abs = c(
+    quantile(abs(term1), 0.99, na.rm = TRUE),
+    quantile(abs(correction), 0.99, na.rm = TRUE),
+    quantile(abs(IF_sigma), 0.99, na.rm = TRUE)
+  )
+)
+
+knitr::kable(
+  component_summary,
+  digits = 2,
+  caption = "Decomposition of the influence-function estimator"
+)
+
+driver_correlations <- data.frame(
+  Driver = c(
+    "|residual|",
+    "|IPW contrast|",
+    "|CATE - ATE|",
+    "|correction term|"
+  ),
+  Correlation_with_abs_IF = c(
+    cor(abs(term3), abs(IF_sigma), use = "complete.obs"),
+    cor(abs(term2), abs(IF_sigma), use = "complete.obs"),
+    cor(abs(CATEhat - atehat), abs(IF_sigma), use = "complete.obs"),
+    cor(abs(correction), abs(IF_sigma), use = "complete.obs")
+  )
+)
+
+knitr::kable(
+  driver_correlations,
+  digits = 3,
+  caption = "Correlation between absolute influence-function values and possible drivers"
+)
+
+# ============================================================
+# 3. Check whether large residuals are driven by high net_tfa values
+# ============================================================
+
+diag_IF <- diag_IF %>%
+  mutate(
+    abs_residual = abs(residual),
+    abs_ipw = abs(ipw_contrast),
+    top_IF_1pct = abs_IF_sigma >= quantile(abs_IF_sigma, 0.99, na.rm = TRUE),
+    top_resid_1pct = abs_residual >= quantile(abs_residual, 0.99, na.rm = TRUE),
+    top_y_1pct = net_tfa >= quantile(net_tfa, 0.99, na.rm = TRUE)
+  )
+
+outlier_summary <- diag_IF %>%
+  group_by(top_IF_1pct) %>%
+  summarise(
+    n = n(),
+    mean_net_tfa = mean(net_tfa, na.rm = TRUE),
+    median_net_tfa = median(net_tfa, na.rm = TRUE),
+    mean_abs_residual = mean(abs_residual, na.rm = TRUE),
+    median_abs_residual = median(abs_residual, na.rm = TRUE),
+    mean_abs_ipw = mean(abs_ipw, na.rm = TRUE),
+    min_propensity = min(propensity, na.rm = TRUE),
+    max_propensity = max(propensity, na.rm = TRUE),
+    prop_top_y_1pct = mean(top_y_1pct, na.rm = TRUE),
+    prop_top_resid_1pct = mean(top_resid_1pct, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+knitr::kable(
+  outlier_summary,
+  digits = 3,
+  caption = "Comparison of top 1% IF observations with the rest of the sample"
+)
+
+ggplot(diag_IF, aes(x = net_tfa, y = abs_residual)) +
+  geom_point(alpha = 0.25, size = 0.7) +
+  geom_smooth(se = FALSE) +
+  scale_x_continuous(trans = "pseudo_log") +
+  scale_y_continuous(trans = "pseudo_log") +
+  theme_minimal() +
+  labs(
+    title = "Large residuals are driven by high net financial assets",
+    x = "Net financial assets",
+    y = expression("|Y - " * hat(E)(Y ~ "|" ~ A * "," * L) * "|")
+  )
+compact_explanation <- diag_IF %>%
+  group_by(top_IF_1pct) %>%
+  summarise(
+    n = n(),
+    mean_net_tfa = mean(net_tfa),
+    mean_abs_residual = mean(abs_residual),
+    mean_abs_ipw = mean(abs_ipw),
+    min_propensity = min(propensity),
+    max_propensity = max(propensity),
+    .groups = "drop"
+  )
+
+knitr::kable(
+  compact_explanation,
+  digits = 2,
+  caption = "Main driver of extreme influence-function values"
+)
+
+# ============================================================
+# Decompose the correction term into its three components
+# ============================================================
+
+cate_component  <- 2 * (CATEhat - atehat)
+ipw_component   <- term2
+resid_component <- term3
+
+correction <- cate_component * ipw_component * resid_component
+
+correction_diag <- data.frame(
+  row_id = seq_along(Y),
+  net_tfa = Y,
+  IF_sigma = IF_sigma,
+  abs_IF = abs(IF_sigma),
+  correction = correction,
+  abs_correction = abs(correction),
+  cate_component = cate_component,
+  abs_cate_component = abs(cate_component),
+  ipw_component = ipw_component,
+  abs_ipw_component = abs(ipw_component),
+  resid_component = resid_component,
+  abs_resid_component = abs(resid_component),
+  propensity = propscore
+)
+
+# Show the most influential observations
+top_correction <- correction_diag %>%
+  arrange(desc(abs_IF)) %>%
+  slice(1:10)
+
+knitr::kable(
+  top_correction,
+  digits = 2,
+  caption = "Decomposition of the correction term for the largest IF values"
+)
+
+```
+
+```{r, echo = FALSE}
+# # ============================================================
+# # Assess drivers of extreme influence-function values
+# # ============================================================
+# 
+# # Components
+# cate_dev        <- CATEhat - atehat
+# abs_cate_dev    <- abs(cate_dev)
+# 
+# squared_term    <- cate_dev^2
+# 
+# ipw_contrast    <- term2
+# abs_ipw         <- abs(ipw_contrast)
+# 
+# residual        <- term3
+# abs_residual    <- abs(residual)
+# 
+# correction_term <- 2 * cate_dev * ipw_contrast * residual
+# 
+# abs_IF          <- abs(IF_sigma)
+# 
+# # Diagnostic dataset
+# IF_drivers <- data.frame(
+#   row_id = seq_along(Y),
+#   net_tfa = Y,
+#   IF_sigma = IF_sigma,
+#   abs_IF = abs_IF,
+#   CATE = CATEhat,
+#   ATE = atehat,
+#   cate_dev = cate_dev,
+#   abs_cate_dev = abs_cate_dev,
+#   squared_term = squared_term,
+#   abs_squared_term = abs(squared_term),
+#   ipw_contrast = ipw_contrast,
+#   abs_ipw = abs_ipw,
+#   residual = residual,
+#   abs_residual = abs_residual,
+#   correction_term = correction_term,
+#   abs_correction_term = abs(correction_term),
+#   propensity = propscore
+# )
+# 
+# # Define extreme IF values: top 1%
+# cut_IF_99 <- quantile(IF_drivers$abs_IF, 0.99, na.rm = TRUE)
+# 
+# IF_drivers <- IF_drivers %>%
+#   mutate(top_IF_1pct = abs_IF >= cut_IF_99)
+# 
+# # ============================================================
+# # 1. Compare top 1% IF observations with the rest
+# # ============================================================
+# 
+# IF_driver_summary <- IF_drivers %>%
+#   group_by(top_IF_1pct) %>%
+#   summarise(
+#     n = n(),
+#     mean_abs_IF = mean(abs_IF, na.rm = TRUE),
+#     mean_abs_cate_dev = mean(abs_cate_dev, na.rm = TRUE),
+#     mean_squared_term = mean(squared_term, na.rm = TRUE),
+#     mean_abs_ipw = mean(abs_ipw, na.rm = TRUE),
+#     mean_abs_residual = mean(abs_residual, na.rm = TRUE),
+#     mean_abs_correction = mean(abs_correction_term, na.rm = TRUE),
+#     mean_net_tfa = mean(net_tfa, na.rm = TRUE),
+#     min_propensity = min(propensity, na.rm = TRUE),
+#     max_propensity = max(propensity, na.rm = TRUE),
+#     .groups = "drop"
+#   )
+# 
+# knitr::kable(
+#   IF_driver_summary,
+#   digits = 2,
+#   caption = "Comparison of top 1% influence-function observations with the rest"
+# )
+# 
+# # ============================================================
+# # 2. Correlations with absolute IF values
+# # ============================================================
+# 
+# driver_correlations <- data.frame(
+#   Driver = c(
+#     "|CATE - ATE|",
+#     "Squared CATE-deviation term",
+#     "|IPW contrast|",
+#     "|Residual|",
+#     "|Correction term|"
+#   ),
+#   Correlation_with_abs_IF = c(
+#     cor(IF_drivers$abs_cate_dev, IF_drivers$abs_IF, use = "complete.obs"),
+#     cor(IF_drivers$abs_squared_term, IF_drivers$abs_IF, use = "complete.obs"),
+#     cor(IF_drivers$abs_ipw, IF_drivers$abs_IF, use = "complete.obs"),
+#     cor(IF_drivers$abs_residual, IF_drivers$abs_IF, use = "complete.obs"),
+#     cor(IF_drivers$abs_correction_term, IF_drivers$abs_IF, use = "complete.obs")
+#   )
+# )
+# 
+# knitr::kable(
+#   driver_correlations,
+#   digits = 3,
+#   caption = "Correlation between absolute IF values and possible drivers"
+# )
+# 
+# # ============================================================
+# # 3. Inspect the most influential observations
+# # ============================================================
+# 
+# top_IF_observations <- IF_drivers %>%
+#   arrange(desc(abs_IF)) %>%
+#   slice(1:10) %>%
+#   select(
+#     row_id,
+#     net_tfa,
+#     IF_sigma,
+#     abs_IF,
+#     cate_dev,
+#     squared_term,
+#     ipw_contrast,
+#     residual,
+#     correction_term,
+#     propensity
+#   )
+# 
+# knitr::kable(
+#   top_IF_observations,
+#   digits = 2,
+#   caption = "Ten observations with largest absolute influence-function values"
+# )
+
+# Compact diagnostic table: what drives extreme IF values?
+
+# Compact report table: drivers of extreme IF values
+
+cate_dev <- CATEhat - atehat
+correction_term <- 2 * cate_dev * term2 * term3
+
+IF_drivers <- data.frame(
+  abs_IF = abs(IF_sigma),
+  abs_CATE_dev = abs(cate_dev),
+  abs_IPW = abs(term2),
+  abs_residual = abs(term3),
+  net_tfa = Y,
+  propensity = propscore
+)
+
+cut_IF_99 <- quantile(IF_drivers$abs_IF, 0.99, na.rm = TRUE)
+
+IF_drivers <- IF_drivers %>%
+  mutate(
+    group = ifelse(abs_IF >= cut_IF_99,
+                   "Top 1% |IF|",
+                   "Remaining 99%")
+  )
+
+IF_report_table <- IF_drivers %>%
+  group_by(group) %>%
+  summarise(
+    n = n(),
+    `Mean net financial assets` = mean(net_tfa, na.rm = TRUE),
+    `Mean |residual|` = mean(abs_residual, na.rm = TRUE),
+    `Mean |CATE - ATE|` = mean(abs_CATE_dev, na.rm = TRUE),
+    `Mean |IPW contrast|` = mean(abs_IPW, na.rm = TRUE),
+    `Propensity range` = paste0(
+      round(min(propensity, na.rm = TRUE), 2),
+      "–",
+      round(max(propensity, na.rm = TRUE), 2)
+    ),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(group == "Top 1% |IF|"))
+
+knitr::kable(
+  IF_report_table,
+  digits = 2,
+  caption = "Comparison of the most influential observations with the rest of the sample"
+)
+
+```
 sigma_sq_hat
 16169595
 sigma_sq_se
@@ -522,9 +883,28 @@ sigma_sq_hat-1.96*sigma_sq_se
 [1] -65052749
 
 
+As CATE variance estimate (and its confidence intervals) are very large; (\(\hat{\sigma}^2 = `r round(sigma_sq_hat, 2)`\), 95% CI 
+[`r round(low_ci, 2)`, `r round(high_ci, 2)`]), we also inspect what drives this value. For this purpose, we inspect whether this result is driven by a few observations with extreme EIF values, which we define as values in the top percent of efficient influence function values. The largest absolute influence-function value equals 
+`r round(max(abs(IF_sigma), na.rm = TRUE), 2)`, while the 99th percentile equals 
+`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2)`. 
 
+These extreme EIF values can originate from three 'sources'. First, they may come from large deviations of the estimated CATE from the ATE. Second, they can come from extreme propensity scores. Third, they can be the result from large outcome residuals. Hence, we compare these for the top 1% vs top 99% of the population.
+
+As shown in Table X, the extreme EIF values are the result of large residuals. The mean absolute residual among the top 1% most influential observations is 
+`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Remaining 99%"], 2)` for the rest of the sample. These extreme values for these observations are the result of higher net financial assets on average: 
+`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. On the other hand, the CATE-ATE deviations are also large, but smaller. The propensity scores among these extreme EIF values are rather normal.
+
+Overall, this suggests that the wide confidence interval is not primarily caused by severe overlap violations, but by a small number of high-asset observations with very large outcome residuals. Since the debiased estimator is not constrained to be non-negative in finite samples, these large correction terms can dominate the positive squared CATE-deviation term. Therefore, the evidence for treatment-effect heterogeneity should be interpreted cautiously.
+
+
+
+
+Extreme values for these influence functions can either be driven by the ... term, the propensity scores or the residuals. Therefore, we also inspect whether our extreme influence function values are driven by these. As we can see in table x, these are mainly driven by  very large residuals. This is because certain observations have very large residuals, as their net financial assets is substantially larger than what's predicted. For example,...
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 #Extreme influence function diagnostics
 summary(IF_sigma)
 
@@ -644,6 +1024,34 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
        y = expression(hat(e)(L)), x = "Income") +
   geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
+```{r}
+# Overlap plot: propensity score distribution by treatment group
+
+pension$p_hat_raw <- A_hat
+
+pension$e401_factor <- factor(
+  pension$e401,
+  levels = c(0, 1),
+  labels = c("Not eligible", "Eligible")
+)
+
+ggplot(pension, aes(x = p_hat_raw, fill = e401_factor, color = e401_factor)) +
+  geom_density(alpha = 0.3, linewidth = 0.8) +
+  geom_vline(xintercept = c(0.05, 0.95), linetype = "dashed", color = "red") +
+  theme_minimal() +
+  labs(
+    title = "Propensity score overlap by treatment group",
+    x = expression(hat(P)(A == 1 ~ "|" ~ L)),
+    y = "Density",
+    fill = "401(k) eligibility",
+    color = "401(k) eligibility"
+  )
+```
+
+
+
+
+
 (The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.)
 
 To assess treatment effect heterogeneity, the variance of the CATE was calculated as given in the assignment. This gives us an idea of the extent as to which the impact of 401(k) eligibility on the net amount of financial assets is different across households with different covariate characteristics. If the effect is close to 0, then we would conclude that the treatment effect is homogenous for households characterized by similar covariates.
@@ -816,7 +1224,11 @@ Ultimately, we inspected the estimated influence-function values and the inverse
 
 #Main conclusion
 
-Our estimate is negative, approximately −6.68×10^6. As σ^2 denotes the variance, this cannot be negative. However, the debiased estimator is not constrained to be non-negative in finite samples, so a negative estimate can happen if the heterogeneity is small relative to the sampling variability. The 95% confidence interval includes 0, and this thus means that we cannot concldue that there is significant heterogeneity in the impact of being eligible for 401(k) schemes for different households.
+Our estimate for the variance is approximately −6.68×10^6 (se=...), with a confidence interval around it of ... and .... As σ^2 denotes the variance, this obviously cannot be negative in reality. However, as we use the debiased estimator, this is not constrained to be negative. To see this, consider that the first term of the EIF should always be positive (as it is squared), however if the correction term is larger than the first term, then the found estimate can be negative. 
+
+Our estimate of ... is thus positive.  
+
+The 95% confidence interval includes 0, and this thus means that we cannot concldue that there is significant heterogeneity in the impact of being eligible for 401(k) schemes for different households.
 
 As our estimates are rather large, we also took a deeper look at the values for the efficient influence functions. This check indicated that certain observations had large absolute influence function values. More specifically, these values are mostly driven by households with a high amount of net financial assets (and thus large residuals). We further investigated whether the propensity scores of these observations were close to 0 or 1, and this was not the case. Thus, these values were caused by the very large residual values caused by the right-skewed distribution, not by the propensity scores.
 
@@ -824,6 +1236,7 @@ Overall, as the confidence intervals overlap with 0, we cannot conclude treatmen
 
 Q4 met DR-learner
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # DR-learner implementation
 # Assumptions
@@ -831,9 +1244,6 @@ Q4 met DR-learner
 # 2) Doubly robust: als 1 van de nuisance paremeters goed geschat is, is het goed
 
 # Reference: solutions of lab Causal Prediction
-
-set.seed(142)
-
 n <- nrow(X)
 K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
 
@@ -859,29 +1269,29 @@ CATE <- rep(NA, n)
 Q4 met DR-learner
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # Random folds
 # folds <- sample(rep(1:K, length.out = n))
 
 # Stratified folds
-set.seed(142)
-
 folds <- rep(NA, n)
 
-# indices per klasse
+# indices per class
 idx0 <- which(A == 0)
 idx1 <- which(A == 1)
 
-# willekeurig schudden binnen klasse
+# random sampling within classes
 idx0 <- sample(idx0)
 idx1 <- sample(idx1)
 
-# evenwichtig verdelen over folds
+# folds
 folds[idx0] <- rep(1:K, length.out = length(idx0))
 folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # DR-learner implementation
 # Loop
@@ -941,6 +1351,7 @@ for (l in 1:K) {
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 l <- 1
 train <- folds != l
 test <- folds == l
@@ -987,6 +1398,7 @@ labs(title = "Treatment effect vs income")
 
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # ATE calculations
 # ATE
 C_DR_av <- rowSums(C_DR, na.rm = TRUE)/(K-1)
@@ -1034,15 +1446,18 @@ Boven- en ondergrens ATE
 [1] 5650.273
 
 ```{r, echo = FALSE}
-# 95% betrouwbaarheidsintervallen
+set.seed(123456789)
+# 95% confidence intervals
 ate_hat + 1.96 * se_hat
 ate_hat - 1.96 * se_hat
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(CATE, main = "CATE")
 ```
 ```{r, echo = FALSE}
+set.seed(123456789)
 # plot 95% CI's
 pension$CATE <- CATE
 ggplot(pension, aes(x = inc, y = CATE))  +
@@ -1051,6 +1466,7 @@ ggplot(pension, aes(x = inc, y = CATE))  +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -1058,6 +1474,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
@@ -1065,25 +1482,33 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(rowSums(Y1_hat, na.rm = TRUE)/(K-1), main = "Expected responses with treatment", xlab = "E[Y1]")
 hist(rowSums(Y0_hat, na.rm = TRUE)/(K-1), main = "Expected responses without treatment", xlab = "E[Y0]")
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
 
+Here, there is a choice of two orthogonal learners, namely the DR-learner or the R-learner. An advantage of the DR-learner is that it is doubly robust, meaning that if either the outcome or the propensity model is correctly specified, it gives consistent estimates. However, a disadvantage of the DR-learner is that it is unstable in the presence of local overlap failures. This means that for regions of the covariates, the propensity score is close to 0 or 1 (so all individuals are either treated/untreated). Thus, here it is difficult to compare treated and untreated individuals with  the same covariates. This can in turn destablize the DR-learner and lead to an extremely high variance.
+
+To assess whether this forms a problem, we compute a plot with the distributions of the propensity scores seperately for treated/untreated individuals. If these distributions overlap, then treated and untreated individuals are comparable across propensity score values. However, if there are regions where only treated/untreated are observed, then it is preferred to use the R-learner over the DR-learner.
+
+
 We estimated the conditional average treatment effect (CATE) of eligibility for a 401(k) plan on net financial assets using a orthogonal doubly robust (DR) learner. The nuisance components — the propensity score and the conditional outcome models — were estimated using random forests, using all covariates n order to improve confounding adjustment. In the final-stage the doubly robust pseudo-outcomes were modelled on income only, using a ordinary linear model.
 
 Compared to the earlier causal forest approach, the chosen DR-learner introduces an additional modeling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies smoothly and approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically and therefore allow for more flexible nonlinear patterns and interactions. The advantage of using in the final stage a linear model instead of a Causal Forest is improved interpretability and easier visualization of the treatment effect as a function of income.
 
+
+
 Q4 met R-learner
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # R-learner implementation
 # Assumptions
 # 1) 
 
 # Reference: solutions of lab Causal Prediction
-
-set.seed(142)
+# Other method: https://rdrr.io/github/xnie/rlearner/man/rboost.html
 
 K <- 6 # set to 6 -> 6-fold CF for outer loop and 5-fold DF for inner loop
 
@@ -1109,6 +1534,7 @@ CATE <- rep(NA, n)
 
 Q4 met R-learner
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # Random folds
 # folds <- sample(rep(1:K, length.out = n))
@@ -1116,20 +1542,21 @@ Q4 met R-learner
 # Stratified folds
 folds <- rep(NA, n)
 
-# indices per klasse
+# indices per class
 idx0 <- which(A == 0)
 idx1 <- which(A == 1)
 
-# willekeurig schudden binnen klasse
+# random sampling within classes
 idx0 <- sample(idx0)
 idx1 <- sample(idx1)
 
-# evenwichtig verdelen over folds
+# folds
 folds[idx0] <- rep(1:K, length.out = length(idx0))
 folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4
 # R-learner implementation
 # Loop
@@ -1193,6 +1620,7 @@ for (l in 1:K) {
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # ATE calculations
 # The ATE should be equal to the mean of the CATE
 mean(CATE)
@@ -1210,9 +1638,11 @@ mean(CATE) - 1.96 * sd(CATE) / sqrt(n)
 [1] 7962.782
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(CATE, main = "CATE")
 ```
 ```{r, echo = FALSE}
+set.seed(123456789)
 pension$CATE <- CATE
 ggplot(pension, aes(x = inc, y = CATE)) +
   geom_point(alpha = 0.2) +
@@ -1220,11 +1650,13 @@ ggplot(pension, aes(x = inc, y = CATE)) +
   labs(title = "Treatment effect vs income")
 ```
 ```{r, echo = FALSE}
+set.seed(123456789)
 hist(rowSums(Yx_hat, na.rm = TRUE)/(K-1), main = "Expected responses", xlab = "E[Y]")
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
 
 ```{r, echo = FALSE}
+set.seed(123456789)
 # Q4 Testen for extreme Propensity scores
 A_hat_vector <- rowSums(A_hat, na.rm = TRUE)/(K-1)
 mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
