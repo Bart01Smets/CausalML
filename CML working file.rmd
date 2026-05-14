@@ -881,15 +881,15 @@ set.seed(123456789)
 # Stratified folds
 folds <- rep(NA, n)
 
-# indices per klasse
+# indices per class
 idx0 <- which(A == 0)
 idx1 <- which(A == 1)
 
-# willekeurig schudden binnen klasse
+# random sampling within classes
 idx0 <- sample(idx0)
 idx1 <- sample(idx1)
 
-# evenwichtig verdelen over folds
+# folds
 folds[idx0] <- rep(1:K, length.out = length(idx0))
 folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
@@ -1051,7 +1051,7 @@ Boven- en ondergrens ATE
 
 ```{r, echo = FALSE}
 set.seed(123456789)
-# 95% betrouwbaarheidsintervallen
+# 95% confidence intervals
 ate_hat + 1.96 * se_hat
 ate_hat - 1.96 * se_hat
 ```
@@ -1141,15 +1141,15 @@ set.seed(123456789)
 # Stratified folds
 folds <- rep(NA, n)
 
-# indices per klasse
+# indices per class
 idx0 <- which(A == 0)
 idx1 <- which(A == 1)
 
-# willekeurig schudden binnen klasse
+# random sampling within classes
 idx0 <- sample(idx0)
 idx1 <- sample(idx1)
 
-# evenwichtig verdelen over folds
+# folds
 folds[idx0] <- rep(1:K, length.out = length(idx0))
 folds[idx1] <- rep(1:K, length.out = length(idx1))
 ```
