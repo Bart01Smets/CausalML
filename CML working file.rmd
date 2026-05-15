@@ -114,10 +114,7 @@ ci_low  <- ate[1] - 1.96 * ate[2]
 ci_high <- ate[1] + 1.96 * ate[2]
 ```
 
-# Introduction
-In this project the effect of eligibility for enrolling in a 401(k) plan on net financial assets is investigated.
-
-# 1a) Effect estimation with Causal Forests
+# 1.a Effect estimation with Causal Forests
 
 In the first phase causal forests were used to estimate the effect of eligibility for enrolling in a 401(k) plan on net financial assets, in function of age, income, family size, years of education, a married indicator, a two-earner status indicator, a defined benefit pension status indicator, an IRA (individual retirement account) participation indicator, and a home ownership indicator.
 
@@ -197,7 +194,7 @@ p_prop_hist <- ggplot(data.frame(A_hat), aes(x = A_hat)) +
   labs(title = "Propensity scores", x = "Propensity scores")
 ```
 
-# 1b) Possible problems when the analysis additionally conditions on other variables
+# 1.b. Conditioning on other variables
 It was previously stated that eligibility for a 401(k) could be taken as exchangeable conditional on income. However, conditioning on additional variables can have important implications depending on their role in the causal structure.
 
 ## Role of Additional Variables in a Causal Diagram
@@ -211,15 +208,11 @@ Including variables in an analysis can have different effects depending on their
   In the case of a mediator *(Eligibility → Mediator → Outcome)*, part of the effect of eligibility is captured through an indirect effect (via the mediator). Conditioning on a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect.
 
 - *Common Cause*  
-  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is necessary to condition on this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of eligibility biased. This is because eligible and non-eligible individuals would then differ in characteristics, which also affect the outcome. We note that conditional exchangeability given only income is a strong assumption and this does not hold if there exist common causes of eligibility and the outcome. *Age* could for example potentially be a common cause. Older individuals are generally more likely to be eligible for a 401(k) program (stable full-time jobs, longer job tenure), while older people have in general more financial assets. Another example of a possible common cause could be *Years of Education*, because it can influence both *Eligibility* and *financial assets* in a positive way.
+  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is necessary to condition on this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of eligibility biased. This is because eligible and non-eligible individuals would then differ in characteristics, which also affect the outcome. We note that conditional exchangeability given only income is a strong assumption and this does not hold if there exist common causes of eligibility and the outcome. An example of a common cause would be *Age*, as older individuals are generally more likely to be eligible for a 401(k) program (stable full-time jobs, longer job tenure), while older people have in general more financial assets. 
 
-- *Variable Affecting Only Eligibility*  
-  If a variable only affects eligibility, including it in the analysis does not introduce bias.
-
-- *Variable Affecting Only the Outcome*  
-  If a variable only affects the outcome and not eligibility, it can be included in the analysis.  
+- *Variable Affecting Only Eligibility or Outcome*  
+  If a variable only affects eligibility, including it in the analysis does not introduce bias.  If a variable only affects the outcome and not eligibility, it can be included in the analysis.  
   Including such variables may improve the efficiency of the estimation.
-\newpage
 
 \begin{figure}
 \centering
@@ -252,7 +245,7 @@ Including variables in an analysis can have different effects depending on their
 \caption{Combined DAG showing collider, mediator, and common cause structures}
 \end{figure}
 
-# 2) Investigating heterogeneity based on subgroup analysis
+# 2. Investigating heterogeneity based on subgroup analysis
 Based on the CATE predictions obtained from the causal forest, the data were split into four subgroups sorted on predicted treatment effects. This allows us to assess if the effect differs across individuals who were predicted to benefit more or less from eligibility.
 
 ```{r, echo = FALSE, cache=TRUE, warning=FALSE}
@@ -324,7 +317,7 @@ This also suggests meaningful treatment effect heterogeneity. While adjacent qua
 
 Overall, this implies that 401(k) eligibility increases net financial assets for all groups, but the estimated gains are substantially larger for the subgroup with the highest predicted treatment effects and there is thus proof of treatment effect heterogeneity. This is because individuals in the highest quartile likely have a higher income, meaning that they can benefit more from becoming eligible than individuals with a lower income.
 
-# 3) Investigating heterogeneity using the Efficient Influence Function
+# 3. Investigating heterogeneity using the Efficient Influence Function
 In this exercise, we compute the variance derived from the Efficient Influence Function (EIF). This gives a debiased estimator of treatment effect heterogeneity, which adds a correction term to account for the fact that the nuisance functions are estimated.
 
 ```{r, echo = FALSE, cache=TRUE, results = FALSE, warning=FALSE}
@@ -430,9 +423,7 @@ A variance estimate of 0 would indicate a homogenous treatment effect, while an 
 Because the confidence intervals are rather large; (\(\hat{\sigma}^2 = `r round(sigma_sq_hat, 2)`\), 95% CI 
 [`r round(low_ci, 2)`, `r round(high_ci, 2)`]), we also inspect what drives this. For this purpose, we inspect whether this result is caused by a few observations with extreme EIF values. We find that the largest EIF value equals 
 `r round(max(abs(IF_sigma), na.rm = TRUE), 2)`, while the 99th percentile equals 
-`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2). Thus, we have extreme influence function values, which lead to very large confidence intervals
-
-These extreme EIF values can originate from three 'sources', as can be derived from the formula. First, they may come from large deviations of the estimated CATE from the ATE. Second, they can come from extreme propensity scores. Third, they can result from large outcome residuals. Hence, we compare these for the top 1% vs top 99% of the population.
+`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2). Thus, we have extreme influence function values, which lead to very large confidence intervals. Next, we inspect where these extreme values come from by compare these observations for the top 1% versus the top 99% of the population.
 
 As shown in Table X, the extreme EIF values are the result of both large residuals and CATE-ATE deviations. The mean absolute residual among the top 1% most influential observations is 
 `r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
@@ -441,8 +432,10 @@ As shown in Table X, the extreme EIF values are the result of both large residua
 `r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. The CATE-ATE deviations are also larger for these influential observations, indicating that they have more extreme predicted treatment effects, and thus also contribute strongly to the extreme EIF values. The inverse probability weights among these extreme EIF values are not very large, indicating that extreme values are not driven by unstable probability weights.
 
 
-# 4) Estimation of the causal effect using a orthogonal R-learner
-The causal forests that were used in the previous phases have the drawback that they learn the causal effect conditional on many variables, making it both difficult to learn with good accuracy and difficult to visualize. In this fourth phase, we therefore estimate the average effect of eligibility for enrollment in a 401(k) plan on net financial assets conditional only on income. For this purpose, an orthogonal R-learner is used, controlling for the same set of covariates as before to ensure valid confounding adjustment. While both DR learner and the R-learner both are theoretically sound to use in this case, it was ultimately decided to implement the R-learner. The R-Learner was chosen because it is more robust to the local overlap failures visible in the propensity score plot. Where p̂ is extreme, the DR-Learner amplifies errors through IPW division and requires explicit clipping, introducing bias. The R-Learner instead naturally downweights those observations via W_R = (Aᵢ − Âᵢ)², requiring no clipping at all.
+# 4. Estimation of the causal effect using a orthogonal R-learner
+The causal forests that were used in the previous phases have the drawback that they learn the causal effect conditional on many variables, making it both difficult to learn with good accuracy and difficult to visualize. In this fourth phase, we therefore estimate the average effect of eligibility for enrollment in a 401(k) plan on net financial assets conditional only on income. For this purpose, an orthogonal R-learner is used, controlling for the same set of covariates as before to ensure valid confounding adjustment. While both DR learner and the R-learner are theoretically sound to use in this case, it was ultimately decided to implement the R-learner. The R-Learner was chosen because it is more robust to the local overlap failures visible in the propensity score plot.
+
+This plot gives the estimated probability of being eligible for 401(k), based on observed covariates, split by treatment status. We can see that failures occur on the far left (low propensity scores), as here the data is mainly composed of observations from not eligible group, with almost no eligible individuals to compare them to. In contrast, on the far right (high propensity scores), we see that there are mainly eligible individuals. This lack of overlap is problematic for the DR-Learner, as it amplifies errors through IPW division and requires explicit truncation, introducing bias. The R-Learner instead naturally downweights those observations via W_R = (Aᵢ − Âᵢ)², making it less likely that truncation is necessary.
 
 ```{r, echo = FALSE, cache=TRUE}
 set.seed(4321)
@@ -572,7 +565,7 @@ se_hat
 
 We estimated the CATE of 401(k) eligibility on net financial assets using an R-Learner, with nuisance components estimated via random forests and the final stage modeled as a weighted linear regression on income. Compared to the causal forest approach in question 1, 2, 3, which attempts to quantify the value of the heterogeneity, the R-Learner more directly answers the research question by characterizing how the treatment effect varies with income. The linear final stage improves interpretability but adds the assumption that there is a linear relationship between income and the treatment effect, introducing misspecification risk if the true relationship is nonlinear. Next to this, working with the R-learner also assumes that the Neyman orthogonality condition holds, which mean that the conditional means of the residuals are zero. This is a strong assumption, and if it does not hold, the estimates may be biased.
 The resulting CATEs show a similar pattern to the causal forest: mostly positive values with a right tail of larger effects, though the R-Learner produces a more concentrated distribution. The derived ATE is `r mean(CATE)` (SE: `r se_hat`), consistent across folds, confirming stable calibration. The cross-fold plot shows all five folds intersecting near the mean ATE and following similar linear trends, though high-income observations with large CATEs visibly pull the fit.
-Diagnostically, the predicted outcomes E[Y] are right-skewed, reflecting heterogeneity in outcome potential and possible sensitivity to outliers. Propensity scores are approximately uniform between 0 and 0.8, confirming the overlap assumption holds and that IPW-based estimation remains stable. Together, these diagnostics support the reliability and robustness of the estimated CATEs and ATE.
+Diagnostically, the predicted outcomes E[Y] are right-skewed, reflecting heterogeneity in outcome potential and possible sensitivity to outliers. Together, these diagnostics support the reliability and robustness of the estimated CATEs and ATE.
 
 \newpage
 # Addendum:
