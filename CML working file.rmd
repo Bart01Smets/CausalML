@@ -497,303 +497,24 @@ knitr::kable(
 
 ```
 
-As CATE variance estimate (and its confidence intervals) are very large; (\(\hat{\sigma}^2 = `r round(sigma_sq_hat, 2)`\), 95% CI 
-[`r round(low_ci, 2)`, `r round(high_ci, 2)`]), we also inspect what drives this value. For this purpose, we inspect whether this result is driven by a few observations with extreme EIF values, which we define as values in the top percent of efficient influence function values. The largest absolute influence-function value equals 
-`r round(max(abs(IF_sigma), na.rm = TRUE), 2)`, while the 99th percentile equals 
-`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2)`. 
+Here, we estimate the variance based on the efficient influence function. The key property that we use is that the expectation of this efficient influence function is equal to 0. Therefore, by taking expectations and isolating the variance, we write the variance of quantities that were already estimated. This includes the estimated CATE, estimated ATE, the propensity score and outcome regression. We then plug these estimates into the formula to calculate \hat{\sigma}^2. We can then also compute the efficient influence function values, which we can use to calculate the standard error and corresponding 95% confidence interval.The full derivation is described more formally and in detail in the appendix.
 
-These extreme EIF values can originate from three 'sources'. First, they may come from large deviations of the estimated CATE from the ATE. Second, they can come from extreme propensity scores. Third, they can be the result from large outcome residuals. Hence, we compare these for the top 1% vs top 99% of the population.
+Our estimate for the variance is approximately \(\hat{\sigma}^2 = `r formatC(sigma_sq_hat, format = "e", digits = 2)`\), (SE = `r formatC(sigma_sq_se, format = "e", digits = 2)`), with a 95% confidence interval of [`r formatC(low_ci, format = "e", digits = 2). As \(\sigma^2\) denotes the variance, this obviously cannot be negative in reality. However, as we use the debiased estimator, it can be shown that estimates are not constrained to be positive. To see this, consider that the first term of the EIF should always be positive (as it is squared), however if the correction term is larger than the first term, then the found estimate can be negative. 
+
+A variance estimate of 0 would indicate a homogenous treatment effect, while an estimate different from 0 indicates a heterogenous treatment effect. Our estimate of the variance is thus positive, which would normally be indicative of a heterogenous treatment effect. However, we can also see that there are very large confidence intervals, which include 0. As this is the case, this implies that we cannot reject the null hypothesis of a homogenous treatment effect, which means we cannot conclude that there is significant heterogeneity in the impact of being eligible for 401(k) schemes on net financial assets for different households.
+
+Because the confidence intervals are rather large; (\(\hat{\sigma}^2 = `r round(sigma_sq_hat, 2)`\), 95% CI 
+[`r round(low_ci, 2)`, `r round(high_ci, 2)`]), we also inspect what drives this value. For this purpose, we inspect whether this result is caused by a few observations with extreme EIF values, which we define as values in the top percent of efficient influence function values. We find that the largest EIF value equals 
+`r round(max(abs(IF_sigma), na.rm = TRUE), 2)`, while the 99th percentile equals 
+`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2), which we consider as extreme.
+
+These extreme EIF values can originate from three 'sources', as can be derived from the formula. First, they may come from large deviations of the estimated CATE from the ATE. Second, they can come from extreme propensity scores. Third, they can result from large outcome residuals. Hence, we compare these for the top 1% vs top 99% of the population.
 
 As shown in Table X, the extreme EIF values are the result of large residuals. The mean absolute residual among the top 1% most influential observations is 
-`r round(IF_report_table$"Mean |residual|"[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
-`r round(IF_report_table$"Mean |residual|"[IF_report_table$group == "Remaining 99%"], 2)` for the rest of the sample. These extreme values for these observations are the result of higher net financial assets on average: 
-`r round(IF_report_table$"Mean net financial assets"[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
-`r round(IF_report_table$"Mean net financial assets"[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. On the other hand, the CATE-ATE deviations are also large, but smaller. The propensity scores among these extreme EIF values are rather normal.
-
-Overall, this suggests that the wide confidence interval is not primarily caused by severe overlap violations, but by a small number of high-asset observations with very large outcome residuals. Since the debiased estimator is not constrained to be non-negative in finite samples, these large correction terms can dominate the positive squared CATE-deviation term. Therefore, the evidence for treatment-effect heterogeneity should be interpreted cautiously.
-
-Extreme values for these influence functions can either be driven by the ... term, the propensity scores or the residuals. Therefore, we also inspect whether our extreme influence function values are driven by these. As we can see in table x, these are mainly driven by  very large residuals. This is because certain observations have very large residuals, as their net financial assets is substantially larger than what's predicted. For example,...
-
-```{r, echo = FALSE, cache=TRUE, results = FALSE, fig.show='hide'}
-set.seed(4321)
-#Extreme influence function diagnostics
-summary(IF_sigma)
-
-# Quantiles 
-quantile(abs(IF_sigma), probs = c(0.50, 0.90, 0.95, 0.975, 0.99, 0.995, 1))
-
-# Histogram of influence-function values
-hist(IF_sigma,
-     breaks = 50,
-     main = "Estimated influence function for sigma^2",
-     xlab = "Influence-function value")
-
-# Histogram of absolute influence-function values
-hist(abs(IF_sigma),
-     breaks = 50,
-     main = "Absolute influence-function values",
-     xlab = "|Influence-function value|")
-
-# most influential observations
-abs_IF <- abs(IF_sigma)
-
-top_ids <- order(abs_IF, decreasing = TRUE)[1:20]
-
-top_influential <- pension[top_ids, c(
-  "net_tfa", "e401", "age", "inc", "fsize", "educ",
-  "marr", "twoearn", "db", "pira", "hown"
-)]
-
-top_influential$IF_sigma <- IF_sigma[top_ids]
-top_influential$abs_IF_sigma <- abs_IF[top_ids]
-top_influential$CATE <- CATEhat[top_ids]
-top_influential$ATE <- atehat
-top_influential$CATE_minus_ATE <- CATEhat[top_ids] - atehat
-top_influential$propensity <- propscore[top_ids]
-top_influential$ipw_contrast <- term2[top_ids]
-top_influential$residual <- term3[top_ids]
-
-top_influential <- top_influential[order(-top_influential$abs_IF_sigma), ]
-
-knitr::kable(top_influential, digits = 2)
-diagnostic_components <- data.frame(
-  net_tfa = Y,
-  A = A,
-  CATE = CATEhat,
-  CATE_minus_ATE = CATEhat - atehat,
-  propensity = propscore,
-  ipw_contrast = term2,
-  residual = term3,
-  term1 = term1,
-  correction = 2 * (CATEhat - atehat) * term2 * term3,
-  IF_sigma = IF_sigma,
-  abs_IF_sigma = abs(IF_sigma)
-)
-
-top_components <- diagnostic_components %>%
-  arrange(desc(abs_IF_sigma)) %>%
-  slice(1:20)
-
-knitr::kable(top_components, digits = 2)
-
-summary(pension$net_tfa)
-
-quantile(pension$net_tfa,
-         probs = c(0, 0.5, 0.9, 0.95, 0.99, 0.995, 1))
-
-hist(pension$net_tfa,
-     breaks = 50,
-     main = "Distribution of net financial assets",
-     xlab = "net_tfa")
-
-```
-
-```{r, echo = FALSE, cache=TRUE, results = FALSE, fig.show='hide'}
-# Overlap plot: propensity score distribution by treatment group
-
-pension$p_hat_raw <- A_hat
-
-pension$e401_factor <- factor(
-  pension$e401,
-  levels = c(0, 1),
-  labels = c("Not eligible", "Eligible")
-)
-
-ggplot(pension, aes(x = p_hat_raw, fill = e401_factor, color = e401_factor)) +
-  geom_density(alpha = 0.3, linewidth = 0.8) +
-  geom_vline(xintercept = c(0.05, 0.95), linetype = "dashed", color = "red") +
-  theme_minimal() +
-  labs(
-    title = "Propensity score overlap by treatment group",
-    x = expression(hat(P)(A == 1 ~ "|" ~ L)),
-    y = "Density",
-    fill = "401(k) eligibility",
-    color = "401(k) eligibility"
-  )
-```
-
-(The 95% confidence interval still overlaps with 0, so there is no evidence of effect heterogeneity.)
-
-To assess treatment effect heterogeneity, the variance of the CATE was calculated as given in the assignment. This gives us an idea of the extent as to which the impact of 401(k) eligibility on the net amount of financial assets is different across households with different covariate characteristics. If the effect is close to 0, then we would conclude that the treatment effect is homogenous for households characterized by similar covariates.
-
-More formally, we estimated:
-
-\[
-\sigma^2 = Var\{E(Y^1 - Y^0 \mid L)\},
-\]
-
-where \(Y^1\) and \(Y^0\) give the outcomes under treatment (eligibility) and control (non-eligibility), respectively, and \(L\) gives the covariates:
-
-\[
-\tau(L) = E(Y^1 - Y^0 \mid L),
-\]
-
-Thus, we can write:
-
-\[
-\sigma^2 = Var\{\tau(L)\}.
-\]
-
-If
-
-\[
-\psi = E\{\tau(L)\}
-\]
-
-gives the average treatment effect. Then,
-
-\[
-\sigma^2 = E\left[\{\tau(L)-\psi\}^2\right].
-\]
-
-Thus, \(\sigma^2\) measures the variance of the CATE around the ATE. 
-
-Normally, we would just compute the variance around the CATE's. However, CATEs are estimated and therefore, this could lead to incorrect inference. Therefore, the efficient influence function for \(\sigma^2\) is used, denoted by:
-
-\[
-\begin{aligned}
-\phi(O) 
-=& \{\tau(L)-\psi\}^2 - \sigma^2 \\
-&+ 2\{\tau(L)-\psi\}
-\left\{
-\frac{A}{P(A=1\mid L)}
--
-\frac{1-A}{P(A=0\mid L)}
-\right\}
-\{Y - E(Y\mid A,L)\}.
-\end{aligned}
-\]
-
-The efficient influence function has mean zero at the true value of the parameter, meaning that
-
-\[
-E\{\phi(O)\}=0.
-\]
-
-This property can be used to construct an estimator for \(\sigma^2\). In practice, we replace the unknown nuisance functions by estimates and solve the empirical analogue of this mean-zero condition:
-
-\[
-\frac{1}{n}\sum_{i=1}^{n}\hat{\phi}_i = 0.
-\]
-
-Starting from the efficient influence function, this means solving
-
-\[
-\frac{1}{n}\sum_{i=1}^{n}
-\left[
-\{\hat{\tau}(L_i)-\hat{\psi}\}^2 - \hat{\sigma}^2
-+
-2\{\hat{\tau}(L_i)-\hat{\psi}\}
-\left\{
-\frac{A_i}{\hat{p}(L_i)}
--
-\frac{1-A_i}{1-\hat{p}(L_i)}
-\right\}
-\{Y_i-\hat{m}(A_i,L_i)\}
-\right]
-=0.
-\]
-
-
-
-We replace the (unknown) nuisance functions by empirical estimates
-
-\[
-\hat{\tau}(L_i)
-\]
-
-for the estimated CATE from the causal forest,
-
-\[
-\hat{\psi}
-\]
-
-for the estimated average treatment effect,
-
-\[
-\hat{p}(L_i) = \hat{P}(A_i=1\mid L_i)
-\]
-
-for the estimated propensity score,
-
-\[
-\hat{m}(A_i,L_i) = \hat{E}(Y_i\mid A_i,L_i)
-\]
-
-for the estimated outcome regression.
-
-This gives the following debiased estimator:
-
-\[
-\hat{\sigma}^2 =
-\frac{1}{n}\sum_{i=1}^{n}
-\left[
-\{\hat{\tau}(L_i)-\hat{\psi}\}^2
-+
-2\{\hat{\tau}(L_i)-\hat{\psi}\}
-\left\{
-\frac{A_i}{\hat{p}(L_i)}
--
-\frac{1-A_i}{1-\hat{p}(L_i)}
-\right\}
-\{Y_i-\hat{m}(A_i,L_i)\}
-\right].
-\]
-
-The first term,
-
-\[
-\{\hat{\tau}(L_i)-\hat{\psi}\}^2,
-\]
-
-gives the estimated variation in the CATE around the ATE. The second term is a debiasing correction based on the residuals from the outcome regression and inverse probability weighting. This correction accounts for potential misspecification in the nuisance functions.
-
-Then, we estimated the influence-function values as
-
-\[
-\begin{aligned}
-\hat{\phi}_i 
-=& \{\hat{\tau}(L_i)-\hat{\psi}\}^2 - \hat{\sigma}^2 \\
-&+ 2\{\hat{\tau}(L_i)-\hat{\psi}\}
-\left\{
-\frac{A_i}{\hat{p}(L_i)}
--
-\frac{1-A_i}{1-\hat{p}(L_i)}
-\right\}
-\{Y_i-\hat{m}(A_i,L_i)\}.
-\end{aligned}
-\]
-
-The standard error is estimated as:
-
-\[
-\widehat{SE}(\hat{\sigma}^2)
-=
-\frac{sd(\hat{\phi}_i)}{\sqrt{n}},
-\]
-
-and a 95% confidence interval was constructed as
-
-\[
-\hat{\sigma}^2
-\pm
-1.96 \times \widehat{SE}(\hat{\sigma}^2).
-\]
-
-Ultimately, we inspected the estimated influence-function values and the inverse probability weights as diagnostics, to see if our estimates and CI's were driven by those.
-
-#Main conclusion
-
-Our estimate for the variance is approximately −6.68×10^6 (se=...), with a confidence interval around it of ... and .... As σ^2 denotes the variance, this obviously cannot be negative in reality. However, as we use the debiased estimator, this is not constrained to be negative. To see this, consider that the first term of the EIF should always be positive (as it is squared), however if the correction term is larger than the first term, then the found estimate can be negative. 
-
-Our estimate of ... is thus positive.  
-
-The 95% confidence interval includes 0, and this thus means that we cannot concldue that there is significant heterogeneity in the impact of being eligible for 401(k) schemes for different households.
-
-As our estimates are rather large, we also took a deeper look at the values for the efficient influence functions. This check indicated that certain observations had large absolute influence function values. More specifically, these values are mostly driven by households with a high amount of net financial assets (and thus large residuals). We further investigated whether the propensity scores of these observations were close to 0 or 1, and this was not the case. Thus, these values were caused by the very large residual values caused by the right-skewed distribution, not by the propensity scores.
-
-Overall, as the confidence intervals overlap with 0, we cannot conclude treatment effect heterogeneity. However, as these confidence intervals remain very broad, it is also difficult to conclude that there is no heterogeneity. Therefore, it is difficult to take conclusions, as inference is impacted by specific high-asset households.
-
+`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Remaining 99%"], 2)` for the rest of the sample. These extreme values for these observations are the result of higher net financial assets on average: 
+`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. On the other hand, the CATE-ATE deviations are also large, (dit moet nog beter) The propensity scores among these extreme EIF values are rather normal.
 
 # 4) Estimation of the causal effect using a orthogonal R-learner
 The causal forests that were used in the previous phases have the drawback that they learn the causal effect conditional on many variables, making it both difficult to learn with good accuracy and difficult to visualize. In this fourth phase, we therefore estimate the average effect of eligibility for enrollment in a 401(k) plan on net financial assets conditional only on income. For this purpose, an orthogonal R-learner is used, controlling for the same set of covariates as before to ensure valid confounding adjustment.
@@ -967,6 +688,117 @@ knitr::kable(
 )
 ```
 
+## Q3
+
+Starting from the efficient influence function,
+
+\[
+\begin{aligned}
+\phi(O)
+=& \{E(Y^1-Y^0\mid L)-E(Y^1-Y^0)\}^2-\sigma^2 \\
+&+2\{E(Y^1-Y^0\mid L)-E(Y^1-Y^0)\}
+\left\{
+\frac{A}{P(A=1\mid L)}
+-
+\frac{1-A}{P(A=0\mid L)}
+\right\} \\
+&\times \{Y-E(Y\mid A,L)\}.
+\end{aligned}
+\]
+
+Since the efficient influence function has mean zero,
+
+\[
+E\{\phi(O)\}=0.
+\]
+
+Taking the expectation of the full expression gives
+
+\[
+\begin{aligned}
+E\Bigg[
+&\{E(Y^1-Y^0\mid L)-E(Y^1-Y^0)\}^2-\sigma^2 \\
+&+2\{E(Y^1-Y^0\mid L)-E(Y^1-Y^0)\}
+\left\{
+\frac{A}{P(A=1\mid L)}
+-
+\frac{1-A}{P(A=0\mid L)}
+\right\} \\
+&\times \{Y-E(Y\mid A,L)\}
+\Bigg]=0.
+\end{aligned}
+\]
+
+We can therefore isolate \(\sigma^2\) as
+
+\[
+\begin{aligned}
+\sigma^2 =
+E\Bigg[
+&\{E(Y^1-Y^0\mid L)-E(Y^1-Y^0)\}^2 \\
+&+2\{E(Y^1-Y^0\mid L)-E(Y^1-Y^0)\}
+\left\{
+\frac{A}{P(A=1\mid L)}
+-
+\frac{1-A}{P(A=0\mid L)}
+\right\} \\
+&\times \{Y-E(Y\mid A,L)\}
+\Bigg].
+\end{aligned}
+\]
+
+Thus, we estimate \(\sigma^2\) by replacing the unknown quantities by estimates and taking the empirical average:
+
+\[
+\begin{aligned}
+\hat{\sigma}^2 =
+\frac{1}{n}\sum_{i=1}^n
+\Bigg[
+&\{\widehat{E}(Y^1-Y^0\mid L_i)-\widehat{E}(Y^1-Y^0)\}^2 \\
+&+2\{\widehat{E}(Y^1-Y^0\mid L_i)-\widehat{E}(Y^1-Y^0)\}
+\left\{
+\frac{A_i}{\hat{P}(A=1\mid L_i)}
+-
+\frac{1-A_i}{\hat{P}(A=0\mid L_i)}
+\right\} \\
+&\times \{Y_i-\widehat{E}(Y_i\mid A_i,L_i)\}
+\Bigg].
+\end{aligned}
+\]
+
+Here, \(\widehat{E}(Y^1-Y^0\mid L_i)\) is the estimated CATE from the causal forest, \(\widehat{E}(Y^1-Y^0)\) is the estimated ATE, \(\hat{P}(A=1\mid L_i)\) and \(\hat{P}(A=0\mid L_i)\) are the estimated propensity scores, and \(\widehat{E}(Y_i\mid A_i,L_i)\) is the estimated outcome regression.
+
+The estimated influence-function values are
+
+\[
+\begin{aligned}
+\hat{\phi}_i
+=& \{\widehat{E}(Y^1-Y^0\mid L_i)-\widehat{E}(Y^1-Y^0)\}^2-\hat{\sigma}^2 \\
+&+2\{\widehat{E}(Y^1-Y^0\mid L_i)-\widehat{E}(Y^1-Y^0)\}
+\left\{
+\frac{A_i}{\hat{P}(A=1\mid L_i)}
+-
+\frac{1-A_i}{\hat{P}(A=0\mid L_i)}
+\right\} \\
+&\times \{Y_i-\widehat{E}(Y_i\mid A_i,L_i)\}.
+\end{aligned}
+\]
+
+The standard error was estimated as
+
+\[
+\widehat{SE}(\hat{\sigma}^2)
+=
+\frac{sd(\hat{\phi}_i)}{\sqrt{n}},
+\]
+
+and the 95\% confidence interval was computed as
+
+\[
+\hat{\sigma}^2
+\pm
+1.96 \times \widehat{SE}(\hat{\sigma}^2).
+\]
 
 ## Q4 figures:
 
