@@ -116,15 +116,15 @@ In this project the effect of eligibility for enrolling in a 401(k) plan on net 
 
 # 1a) Effect estimation with Causal Forests
 
-In the first phase Causal Forests were used to estimate the effect of eligibility for enrolling in a 401(k) plan on net financial assets, in function of age, income, family size, years of education, a married indicator, a two-earner status indicator, a defined benefit pension status indicator, an IRA (individual retirement account) participation indicator, and a home ownership indicator.
+In the first phase causal forests were used to estimate the effect of eligibility for enrolling in a 401(k) plan on net financial assets, in function of age, income, family size, years of education, a married indicator, a two-earner status indicator, a defined benefit pension status indicator, an IRA (individual retirement account) participation indicator, and a home ownership indicator.
 
 The causal forest analysis reveals a causal effect of eligibility for enrollment in a 401(k) plan on accumulated net financial assets. The estimated Average Treatment Effect (ATE) equals `r round(ate[1], 3)`, indicating that individuals who are eligible for a 401(k) plan accumulate, on average, approximately \$`r round(ate[1], 3)` more in net financial assets than non-eligible individuals. The estimated standard error is \$`r round(ate[1], 3)`, resulting in a 95% confidence interval of [\$`r round(ate[1] - 1.96 * ate[2], 3)`, \$`r round(ate[1] + 1.96 * ate[2], 3)`]. Because the confidence interval is positive and larger than 0, we conclude that being eligible for the 401(k) has a significant and positive effect on the net financial assets of a person.
 
-In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals. Figure \@ref(fig:fig-cate-hist) presents a histogram of the predicted CATE values. Most individuals have positive CATE values, although negative values are also observed. Furthermore, the estimated CATE was plotted against income (Figure \@ref(fig:fig-cate-unc)), revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but mainly so for richer individuals.
+In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals with different covariate profiles. Figure \@ref(fig:fig-cate-hist) presents a histogram of the predicted CATE values. Most individuals have positive CATE values, although negative values are also observed. Thus, this suggests that for most covariate profiles, the treatment effect was expected to be positive, yet not for all profiles. Furthermore, the estimated CATE was plotted against income (Figure \@ref(fig:fig-cate-unc)), revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but more strongly so for richer individuals.
 
-To better characterize this relationship, both a linear regression model and a smoothing spline regression (with $\lambda$ = 1) were fitted. The corresponding trends are displayed in Figures \@ref(fig:fig-cate-inc-smooth) and \@ref(fig:fig-cate-inc-lm) While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
+To better characterize this relationship, both a linear regression model and a smoothing spline regression (with $\lambda$ = 1) were fitted. The corresponding trends are displayed in Figures \@ref(fig:fig-cate-inc-smooth) and \@ref(fig:fig-cate-inc-lm). While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
 
-To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram (Figure \@ref(fig:fig-A-hist)). `r round(mean(A_hat < 0.01 | A_hat > 0.99), 2)`% of the scores were smaller than 0.01 or larger than 0.99, and only `r round(mean(A_hat < 0.05 | A_hat > 0.95), 2)`% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed (Figure \@ref(fig:fig-A-inc)). This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate. This can be viewed as an example of the bias--variance trade-off. Although trimming extreme propensity scores can reduce the variance of the estimator by limiting the influence of highly weighted observations, it may simultaneously introduce additional bias by systematically excluding specific subpopulations from the analysis.
+To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram (Figure \@ref(fig:fig-A-hist)). `r round(mean(A_hat < 0.01 | A_hat > 0.99), 2)`% of the scores were smaller than 0.01 or larger than 0.99, and only `r round(mean(A_hat < 0.05 | A_hat > 0.95), 2)`% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed (Figure \@ref(fig:fig-A-inc)). This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate. This can be viewed as an example of the bias--variance trade-off. Although truncating extreme propensity scores can reduce the variance of the estimator by limiting the influence of highly weighted observations, it may simultaneously introduce additional bias by systematically excluding specific subpopulations from the analysis.
 
 To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (https://grf-labs.github.io/grf/reference/causal_forest.html).
 
@@ -208,18 +208,17 @@ It was previously stated that eligibility for a 401(k) could be taken as exchang
 
 ## Role of Additional Variables in a Causal Diagram
 
-In addition, including variables in an analysis can have different effects depending on their position in the causal diagram.
+In addition, including variables in an analysis can have different effects depending on their position in the causal diagram. We illustrate this with figures below.
 
 - *Collider*  
-  In the case of a collider *(Eligibility → Collider ← Outcome)*, conditioning on this variable introduces collider bias.  
-  Conditioning on a collider opens a backdoor pathway, making the estimated effect of eligibility biased and very difficult to interpret.
+  In the case of a collider *(Eligibility → Collider ← Outcome)*, conditioning on this variable introduces collider bias. Normally, this path would be blocked. However, conditioning on the collider opens this path and creates a spurious association between eligibility and net financial assets, which would bias our treatment effect.
 
 - *Mediator*  
   In the case of a mediator *(Eligibility → Mediator → Outcome)*, part of the effect of eligibility is captured through an indirect effect (via the mediator).  
-  Including a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect, but only the direct effect.
+  Conditioning on a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect, but only the direct effect.
 
 - *Common Cause*  
-  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is appropriate to include this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of eligibility not credible. We note that conditional exchangeability given only income does not hold if there exist common causes of Eligibility and the outcome that are not controlled for.
+  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is necessary to condition on this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of eligibility biased. This is because eligible and non-eligible individuals would then differ in characteristics, which also affect the outcome. We note that conditional exchangeability given only income is a strong assumption and this does not hold if there exist common causes of eligibility and the outcome that are not controlled for. Given that it holds in this assignment, this implies that all backdoor paths are blocked once income is conditioned for.
 
 - *Variable Affecting Only Eligibility*  
   If a variable only affects eligibility, including it in the analysis does not introduce bias.
@@ -243,40 +242,80 @@ In addition, including variables in an analysis can have different effects depen
 \textbf{Collider} \\
 \vspace{0.5cm}
 \begin{tikzpicture}[>=stealth, node distance=2cm, thick]
-    \node (A) at (0,2) {Income (A)};
+
+    % Conditioned variable
+    \node[draw, rounded corners, inner sep=4pt] (L) at (3,4) {Income (L)};
+
+    % Main variables
+    \node (A) at (0,2) {Eligibility (A)};
     \node (Y) at (6,2) {Outcome (Y)};
     \node (Z) at (3,0) {Collider (Z)};
+
+    % Conditioning on income
+    \draw[->] (L) -- (A);
+    \draw[->] (L) -- (Y);
+
+    % Collider structure
     \draw[->] (A) -- (Y);
     \draw[->] (A) -- (Z);
     \draw[->] (Y) -- (Z);
+
 \end{tikzpicture}
 \end{center}
+
 
 % --- MEDIATOR ---
 \begin{center}
 \textbf{Mediator} \\
 \vspace{0.5cm}
 \begin{tikzpicture}[>=stealth, node distance=2cm, thick]
-    \node (A) at (0,2)  {Income (A)};
-    \node (M) at (3,2)  {Mediator (M)};
-    \node (Y) at (6,2)  {Outcome (Y)};
+
+    % Conditioned variable
+    \node[draw, rounded corners, inner sep=4pt] (L) at (3,4) {Income (L)};
+
+    % Main variables
+    \node (A) at (0,2) {Eligibility (A)};
+    \node (M) at (3,2) {Mediator (M)};
+    \node (Y) at (6,2) {Outcome (Y)};
+
+    % Conditioning on income
+    \draw[->] (L) -- (A);
+    \draw[->] (L) -- (Y);
+
+    % Mediator structure
     \draw[->] (A) -- (M);
     \draw[->] (M) -- (Y);
     \draw[->, bend right=30] (A) to (Y);  % direct effect
+
 \end{tikzpicture}
 \end{center}
+
 
 % --- COMMON CAUSE ---
 \begin{center}
 \textbf{Common Cause} \\
 \vspace{0.5cm}
 \begin{tikzpicture}[>=stealth, node distance=2cm, thick]
-    \node (A) at (0,2)  {Income (A)};
-    \node (Y) at (6,2)  {Outcome (Y)};
-    \node (C) at (3,4)  {Common Cause (C)};
-    \draw[->] (A) -- (Y);
+
+    % Conditioned variable
+    \node[draw, rounded corners, inner sep=4pt] (L) at (3,4.5) {Income (L)};
+
+    % Main variables
+    \node (A) at (0,1.5) {Eligibility (A)};
+    \node (Y) at (6,1.5) {Outcome (Y)};
+    \node (C) at (3,3) {Common Cause (C)};
+
+    % Conditioning on income
+    \draw[->] (L) -- (A);
+    \draw[->] (L) -- (Y);
+
+    % Additional common cause structure
     \draw[->] (C) -- (A);
     \draw[->] (C) -- (Y);
+
+    % Causal effect of interest
+    \draw[->] (A) -- (Y);
+
 \end{tikzpicture}
 \end{center}
 
