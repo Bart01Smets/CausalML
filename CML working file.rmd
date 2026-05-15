@@ -124,7 +124,7 @@ In addition to the average treatment effect, the Conditional Average Treatment E
 
 To better characterize this relationship, both a linear regression model and a smoothing spline regression (with $\lambda$ = 1) were fitted. The corresponding trends are displayed in Figures \@ref(fig:fig-cate-inc-smooth) and \@ref(fig:fig-cate-inc-lm). While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
 
-To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram (Figure \@ref(fig:fig-A-hist)). `r round(mean(A_hat < 0.01 | A_hat > 0.99), 2)`% of the scores were smaller than 0.01 or larger than 0.99, and only `r round(mean(A_hat < 0.05 | A_hat > 0.95), 2)`% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes. In addition, a clear relationship between income and the propensity scores was observed (Figure \@ref(fig:fig-A-inc)). This finding is inconsistent with the assumption of exchangeability conditional on income alone. Together with the limited number of extreme propensity scores, this provides an additional reason not to apply propensity score truncation. Removing observations with extreme propensity scores would likely shift the estimated ATE toward the treatment effect for higher-income individuals, thereby reducing the representativeness of the overall estimate. This can be viewed as an example of the bias--variance trade-off. Although truncating extreme propensity scores can reduce the variance of the estimator by limiting the influence of highly weighted observations, it may simultaneously introduce additional bias by systematically excluding specific subpopulations from the analysis.
+To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram (Figure \@ref(fig:fig-A-hist)). `r round(mean(A_hat < 0.01 | A_hat > 0.99), 2)`% of the scores were smaller than 0.01 or larger than 0.99, and only `r round(mean(A_hat < 0.05 | A_hat > 0.95), 2)`% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes, so truncation of propensity scores is not needed.
 
 To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (https://grf-labs.github.io/grf/reference/causal_forest.html).
 
@@ -194,31 +194,21 @@ p_prop_hist <- ggplot(data.frame(A_hat), aes(x = A_hat)) +
   labs(title = "Propensity scores", x = "Propensity scores")
 ```
 
-```{r fig-A-inc, echo = FALSE, cache=TRUE, results = FALSE}
-set.seed(4321)
-
-causalF_propvsinc <- ggplot(pension, aes(x = inc, y = A_hat)) +
-  geom_point(alpha = 0.2) +
-  geom_smooth() +
-  labs(title = "Propensity score vs income")
-```
-
 # 1b) Possible problems when the analysis additionally conditions on other variables
 It was previously stated that eligibility for a 401(k) could be taken as exchangeable conditional on income. However, conditioning on additional variables can have important implications depending on their role in the causal structure.
 
 ## Role of Additional Variables in a Causal Diagram
 
-In addition, including variables in an analysis can have different effects depending on their position in the causal diagram. We illustrate this with figures below.
+Including variables in an analysis can have different effects depending on their role in the causal diagram. We illustrate this with figures below.
 
 - *Collider*  
-  In the case of a collider *(Eligibility → Collider ← Outcome)*, conditioning on this variable introduces collider bias. Normally, this path would be blocked. However, conditioning on the collider opens this path and creates a spurious association between eligibility and net financial assets, which would bias our treatment effect.
+  In the case of a collider *(Eligibility → Collider ← Outcome)*, conditioning on this variable introduces collider bias. Normally, this path would be blocked. However, conditioning on the collider opens this path and creates a spurious association between eligibility and net financial assets, which would bias our treatment effect. *IRA* could for example act as a *collider*, since individuals who are ineligible for a 401(k) may substitute toward an IRA as an alternative retirement savings vehicle, while wealthier individuals with higher net financial assets are also more likely to participate in an IRA.
 
 - *Mediator*  
-  In the case of a mediator *(Eligibility → Mediator → Outcome)*, part of the effect of eligibility is captured through an indirect effect (via the mediator).  
-  Conditioning on a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect, but only the direct effect.
+  In the case of a mediator *(Eligibility → Mediator → Outcome)*, part of the effect of eligibility is captured through an indirect effect (via the mediator). Conditioning on a mediator is therefore not incorrect, but it implies that the estimated effect is no longer the total effect.
 
 - *Common Cause*  
-  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is necessary to condition on this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of eligibility biased. This is because eligible and non-eligible individuals would then differ in characteristics, which also affect the outcome. We note that conditional exchangeability given only income is a strong assumption and this does not hold if there exist common causes of eligibility and the outcome that are not controlled for. Given that it holds in this assignment, this implies that all backdoor paths are blocked once income is conditioned for.
+  In the case of a common cause *(Eligibility ← Common Cause → Outcome)*, it is necessary to condition on this variable in the analysis. If a common cause is omitted, a backdoor pathway remains open, making the estimated effect of eligibility biased. This is because eligible and non-eligible individuals would then differ in characteristics, which also affect the outcome. We note that conditional exchangeability given only income is a strong assumption and this does not hold if there exist common causes of eligibility and the outcome. *Age* could for example potentially be a common cause. Older individuals are generally more likely to be eligible for a 401(k) program (stable full-time jobs, longer job tenure), while older people have in general more financial assets. Another example of a possible common cause could be *Years of Education*, because it can influence both *Eligibility* and *financial assets* in a positive way.
 
 - *Variable Affecting Only Eligibility*  
   If a variable only affects eligibility, including it in the analysis does not introduce bias.
@@ -226,16 +216,6 @@ In addition, including variables in an analysis can have different effects depen
 - *Variable Affecting Only the Outcome*  
   If a variable only affects the outcome and not eligibility, it can be included in the analysis.  
   Including such variables may improve the efficiency of the estimation.
-
-## Examples
-
-- *Age* could potentially be a *common cause*.  
-  Older individuals are generally more likely to be eligible for a 401(k) program (stable full-time jobs, longer job tenure), while older people have had more time to accumulate wealth and financial assets over the course of their lives.
-
-- *IRA* could act as a *collider*, since individuals who are ineligible for a 401(k) may substitute toward an IRA as an alternative retirement savings vehicle, while wealthier individuals with higher net financial assets are also more likely to participate in an IRA.
-
-- *Years of Education* could be a *common cause*.  
-  Individuals with higher levels of education tend to accumulate greater net financial assets and are also more likely to be eligible for a 401(k) plan.
   
 % --- COLLIDER ---
 \begin{center}
