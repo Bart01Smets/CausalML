@@ -300,7 +300,7 @@ Including variables in an analysis can have different effects depending on their
 \end{center}
 
 # 2) Investigating heterogeneity based on subgroup analysis
-Based on the predictions obtained from the causal forest, the data were split into four subgroups to investigate treatment effect heterogeneity.
+Based on the CATE predictions obtained from the causal forest, the data were split into four subgroups to investigate treatment effect heterogeneity.
 
 ```{r, echo = FALSE, cache=TRUE, warning=FALSE}
 set.seed(4321)
