@@ -3,8 +3,8 @@ title: "Causal Machine Learning assignment"
 author: "Thomas Sertijn, Bart Smets, Ilja Van Bever"
 date: "`r Sys.Date()`"
 output: 
-pdf_document:
-  latex_engine: xelatex
+  pdf_document:
+    latex_engine: xelatex
 header-includes:
   - \usepackage{tikz}
 ---
@@ -183,7 +183,7 @@ ggplot(pension, aes(x = inc, y = CATE)) +
 
 ```{r fig-cate-hist, echo=FALSE, fig.cap="Histogram of the predicted CATE values"}
 set.seed(4321)
-hist(pension$CATE, main = "CATE", xlab = "CATE")
+hist_causalF <- hist(pension$CATE, main = "CATE", xlab = "CATE")
 ```
 
 ```{r fig-A-hist, echo = FALSE}
@@ -316,27 +316,6 @@ sd_4   <- Q4_ATE["std.err"]
 Low_CI_4  <- coef_4 - (1.96 * sd_4)
 High_CI_4 <- coef_4 + (1.96 * sd_4)
 
-coef_1
-Low_CI_1
-High_CI_1
-
-coef_2
-Low_CI_2
-High_CI_2
-
-coef_3
-Low_CI_3
-High_CI_3
-
-coef_4
-Low_CI_4
-High_CI_4
-
-coef_1
-coef_2
-coef_3
-coef_4
-
 cat("ATE estimates by predicted CATE quartile:\n\n")
 
 cat("Q1 (lowest predicted CATE): ",
@@ -388,6 +367,41 @@ In terms of treatment heterogeneity, the estimated effects for the bottom three 
 
 This suggests that the treatment effect is not homogeneous across households, as the confidence intervals do not overlap for all subgroups. However, because the confidence intervals across quartiles still overlap, this should be interpreted as suggestive evidence of treatment-effect heterogeneity rather than definitive proof. The subgroup with the highest predicted CATE likely consists of households with characteristics such as higher income or stronger saving capacity, for whom the tax-advantaged saving mechanism is more effective.
 
+```{r}
+# Create compact table for quartile-specific ATEs
+quartile_results <- data.frame(
+  Quartile = c(
+    "Q1 (lowest predicted CATE)",
+    "Q2",
+    "Q3",
+    "Q4 (highest predicted CATE)"
+  ),
+  Estimate = c(coef_1, coef_2, coef_3, coef_4),
+  SE = c(sd_1, sd_2, sd_3, sd_4),
+  CI_low = c(Low_CI_1, Low_CI_2, Low_CI_3, Low_CI_4),
+  CI_high = c(High_CI_1, High_CI_2, High_CI_3, High_CI_4)
+)
+ 
+knitr::kable(
+  quartile_results,
+  digits = 2,
+  caption = "ATE estimates by predicted CATE quartile"
+)
+ 
+```
+ 
+ 
+First, we find that the estimated treatment effect is positive in all four quartiles. This implies that, on average, 401(k) eligibility has a positive impact on net financial assets for the complete distribution. However, this treatment effect differs across subgroups. The estimated ATE increases across the four predicted-CATE quartiles: approximately 
+\$`r round(quartile_results$Estimate[1], 0)` in Q1, 
+\$`r round(quartile_results$Estimate[2], 0)` in Q2, 
+\$`r round(quartile_results$Estimate[3], 0)` in Q3, and 
+\$`r round(quartile_results$Estimate[4], 0)` in Q4. This already suggests that there is meaningful heterogeneity in treatment effects.
+ 
+At the same time, the confidence intervals of adjacent quartiles overlap, so there is no evidence for a difference between these quartiles. However, the confidence intervals for the lowest and highest predicted-CATE quartiles do not overlap, 
+which indicates a clear difference between individuals predicted to benefit least and those predicted to benefit most, "that even the difference between the most extreme quartiles should be interpreted cautiously")`. Overall, this thus impliestreatment-effect heterogeneity: 401(k) eligibility appears to increase net financial assets for all groups, but the estimated gains are substantially larger for the subgroup with the highest predicted treatment effects.
+ 
+This subgroup most likely consists of households with higher saving capacity (e.g. higher income/ other financial characteristics,...). Therefore, this tax-advantaged saving mechanism appears to be especially effective for households that are already predicted to benefit more from 401(k) eligibility.
+
 # 3) Investigating heterogeneity using the Efficient Influence Function
 The Efficient Influence Function (EIF) was used to construct a debiased estimator for assessing treatment effect heterogeneity.
 
@@ -414,7 +428,6 @@ atehat<-average_treatment_effect(causal_forest)["estimate"]
 #Get actual average treatment effect (E(Y1-Y0))
 atehat <- as.numeric(average_treatment_effect(causal_forest)["estimate"])
 ## E(Y/A,L)
-Y_AX_hat
 
 # Fill in the formula for the EIF
 
@@ -827,15 +840,12 @@ As CATE variance estimate (and its confidence intervals) are very large; (\(\hat
 These extreme EIF values can originate from three 'sources'. First, they may come from large deviations of the estimated CATE from the ATE. Second, they can come from extreme propensity scores. Third, they can be the result from large outcome residuals. Hence, we compare these for the top 1% vs top 99% of the population.
 
 As shown in Table X, the extreme EIF values are the result of large residuals. The mean absolute residual among the top 1% most influential observations is 
-`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
-`r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Remaining 99%"], 2)` for the rest of the sample. These extreme values for these observations are the result of higher net financial assets on average: 
-`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
-`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. On the other hand, the CATE-ATE deviations are also large, but smaller. The propensity scores among these extreme EIF values are rather normal.
+`r round(IF_report_table$"Mean |residual|"[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+`r round(IF_report_table$"Mean |residual|"[IF_report_table$group == "Remaining 99%"], 2)` for the rest of the sample. These extreme values for these observations are the result of higher net financial assets on average: 
+`r round(IF_report_table$"Mean net financial assets"[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
+`r round(IF_report_table$"Mean net financial assets"[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. On the other hand, the CATE-ATE deviations are also large, but smaller. The propensity scores among these extreme EIF values are rather normal.
 
 Overall, this suggests that the wide confidence interval is not primarily caused by severe overlap violations, but by a small number of high-asset observations with very large outcome residuals. Since the debiased estimator is not constrained to be non-negative in finite samples, these large correction terms can dominate the positive squared CATE-deviation term. Therefore, the evidence for treatment-effect heterogeneity should be interpreted cautiously.
-
-
-
 
 Extreme values for these influence functions can either be driven by the ... term, the propensity scores or the residuals. Therefore, we also inspect whether our extreme influence function values are driven by these. As we can see in table x, these are mainly driven by  very large residuals. This is because certain observations have very large residuals, as their net financial assets is substantially larger than what's predicted. For example,...
 
@@ -960,7 +970,7 @@ ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
        y = expression(hat(e)(L)), x = "Income") +
   geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
 ```
-```{r}
+```{r, echo = FALSE}
 # Overlap plot: propensity score distribution by treatment group
 
 pension$p_hat_raw <- A_hat
@@ -1296,17 +1306,18 @@ for (l in 1:K) {
 
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, include=FALSE}
 set.seed(4321)
 # ATE calculations
 # The ATE should be equal to the mean of the CATE
 mean(CATE)
 se_hat  <- sd(CATE) / sqrt(n)
+se_hat
 ```
 
 ```{r, echo = FALSE}
 set.seed(4321)
-hist(CATE, main = "CATE")
+cate_rlearn <- hist(CATE, main = "CATE")
 ```
 ```{r, echo = FALSE}
 set.seed(4321)
@@ -1322,7 +1333,7 @@ hist(rowSums(Yx_hat, na.rm = TRUE)/(K-1), main = "Expected responses", xlab = "E
 hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, include=FALSE}
 set.seed(4321)
 # Q4 Testen for extreme Propensity scores
 A_hat_vector <- rowSums(A_hat, na.rm = TRUE)/(K-1)
@@ -1334,5 +1345,16 @@ We estimated the CATE of eligibility for a 401(k) plan on net financial assets u
 
 Compared to the approach used in question 3, where the model gives us the existence of the heterogeneity and attempts to quantify this value, the R-Learner tells how this heterogeneity varies with income, giving a more informative and directly answers the research question about the income-dependent treatment effect.
 
-Compared to the earlier causal forest approach, the chosen R-Learner introduces an additional modelling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically, allowing for more flexible nonlinear patterns and interactions. The advantage of using a linear model in the final stage is improved interpretability and easier visualisation of the treatment effect as a function of income. If instead of linear models, other models would have been used in the approach, then the interpretability of the relationship between income and the treatment effect would have been more difficult, and it would have been more difficult to visualise this relationship. However, using a linear model also introduces the risk of model misspecification if the true relationship is nonlinear, which could lead to biased estimates of the treatment effect heterogeneity. 
+Compared to the earlier causal forest approach, the chosen R-Learner introduces an additional modelling assumption in the final stage. Specifically, by regressing the pseudo-outcomes linearly on income, the method assumes that the treatment effect varies approximately linearly with income. In contrast, causal forests estimate treatment heterogeneity fully nonparametrically, allowing for more flexible nonlinear patterns and interactions. The advantage of using a linear model in the final stage is improved interpretability and easier visualisation of the treatment effect as a function of income. If instead of linear models, other models would have been used in the approach, then the interpretability of the relationship between income and the treatment effect would have been more difficult, and would add other modeling assumptions. However, using a linear model also introduces the risk of model misspecification if the true relationship is nonlinear, which could lead to biased estimates of the treatment effect heterogeneity. 
 
+When comparing the resulting CATEs between the R-learner and the previously used causal forest approach, we could observe a similar trend, with mmost individuals having positive CATE values, and some negative values are also observed. However, the CATEs resulting from the R-learner approach resulted in a more condensed histogram with most CATEs resulting in the same peak. However, similar to the causal forest result, we can still observe a tail reaching higher CATE values.
+
+Averaging over the CATEs from the R-learner gave us an average treatment effect of `r mean(CATE)` with a standard error of `r se_hat`. This showed that a highly stable estimate of the Average Treatment Effect (ATE) could be derived from the R‑learner’s individualized predictions. This could also be seen when comparing the CATEs from the different folds from the cross-fitting in terms of the income. Here, we see that the trend in all 5 folds crosses a single point equal to the average. Next to this, all five folds follow a similar linear trend. On this plot it could be observed that a high‑income points with large CATEs, can realy influence the linear trend build into the R learner.
+
+This pattern implies that the R‑learner’s residualization step effectively removes confounding, allowing the treatment effect to emerge cleanly as a function of income. The intersection near the mean ATE is a visual confirmation of model calibration.
+
+The distribution of the predicted outcomes (E[Y]) shows a pronounced right‑skew, with most observations concentrated near zero and a long tail extending toward higher expected values. This indicates that the majority of individuals are predicted to have relatively low expected responses, while a smaller subset exhibits substantially higher predicted outcomes. Such a pattern suggests that the model successfully captures heterogeneity in outcome potential, though the skewness may point to sensitivity to outliers or nonlinear effects that could be explored further through transformation or trimming.
+
+The estimated propensity scores display a fairly uniform distribution between 0 and 0.8, with no substantial clustering near 0 or 1. This confirms that the overlap (positivity) assumption holds: both treated and control units share similar covariate support, and no individuals have near‑deterministic treatment assignment. Consequently, inverse probability weighting and related estimators are expected to remain numerically stable.
+
+Together, these diagnostics demonstrate that the R‑learner framework operates under favorable conditions. The outcome model captures meaningful variation across individuals, while the treatment assignment model maintains adequate overlap. This balance supports the reliability of the estimated Conditional Average Treatment Effects (CATEs) and the derived Average Treatment Effect (ATE), ensuring that causal estimates are both interpretable and robust
