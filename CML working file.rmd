@@ -15,6 +15,7 @@ library(hdm)
 library(grf)
 library(dplyr)
 library(tidyr)
+library(patchwork)
 library(knitr)
 #load data
 data(pension)
@@ -182,13 +183,15 @@ causal_treatinc_uncertain <- ggplot(pension, aes(x = inc, y = CATE)) +
 ```
 
 ```{r fig-cate-hist, echo=FALSE, fig.cap="Histogram of the predicted CATE values", cache=TRUE, results = FALSE, fig.show='hide'}
-set.seed(4321)
-hist_causalF <- hist(pension$CATE, main = "CATE", xlab = "CATE")
+p_cate_hist <- ggplot(pension, aes(x = CATE)) +
+  geom_histogram(bins = 30) +
+  labs(title = "CATE", x = "CATE")
 ```
 
 ```{r fig-A-hist, echo = FALSE, cache=TRUE, results = FALSE, fig.show='hide'}
-set.seed(4321)
-hist_propscores_causalF <- hist(A_hat, main = "Propensity scores", xlab = "Propensity scores")
+p_prop_hist <- ggplot(data.frame(A_hat), aes(x = A_hat)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Propensity scores", x = "Propensity scores")
 ```
 
 ```{r fig-A-inc, echo = FALSE, cache=TRUE, results = FALSE}
@@ -331,13 +334,6 @@ quartile_results <- data.frame(
   CI_low = c(Low_CI_1, Low_CI_2, Low_CI_3, Low_CI_4),
   CI_high = c(High_CI_1, High_CI_2, High_CI_3, High_CI_4)
 )
-
-knitr::kable(
-  quartile_results,
-  digits = 2,
-  caption = "ATE estimates by predicted CATE quartile"
-)
-
 ```
 
 First, we can see that the estimated treatment effect is positive in all four quartiles. This implies that, on average, 401(k) eligibility has a positive impact on net financial assets across the full distribution.
@@ -1238,6 +1234,28 @@ Together, these diagnostics demonstrate that the R‑learner framework operates 
 
 # Addendum:
 
+## Q1:
+
+```{r, echo = FALSE, cache=TRUE, results = FALSE, warning=FALSE}
+wrap_plots(
+  causal_treatinc, causal_lintreatincome, causal_treatinc_uncertain,
+  p_cate_hist, p_prop_hist, causalF_propvsinc,
+  ncol = 2
+)
+```
+
+## Q2:
+table:
+
+```{r, echo = FALSE, cache=TRUE}
+knitr::kable(
+  quartile_results,
+  digits = 2,
+  caption = "ATE estimates by predicted CATE quartile"
+)
+```
+
+
 ## Q4 figures:
 
 ```{r, echo = FALSE, cache=TRUE}
@@ -1246,8 +1264,8 @@ cate_rlearn <- hist(CATE, main = "CATE")
 ```
 ```{r, echo = FALSE, cache=TRUE}
 set.seed(4321)
-pension$CATE <- CATE
-ggplot(pension, aes(x = inc, y = CATE)) +
+pension$CATE_r <- CATE
+ggplot(pension, aes(x = inc, y = CATE_r)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
   labs(title = "Treatment effect vs income")
