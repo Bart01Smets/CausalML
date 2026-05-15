@@ -1258,28 +1258,33 @@ knitr::kable(
 
 ## Q4 figures:
 
+
 ```{r, echo = FALSE, cache=TRUE}
 set.seed(4321)
-cate_rlearn <- hist(CATE, main = "CATE")
-```
-```{r, echo = FALSE, cache=TRUE}
-set.seed(4321)
+
+# was: hist(CATE, ...)
+p_cate_rlearn <- ggplot(data.frame(CATE), aes(x = CATE)) +
+  geom_histogram(bins = 30) +
+  labs(title = "CATE")
+
+# was: unnamed ggplot
 pension$CATE_r <- CATE
-ggplot(pension, aes(x = inc, y = CATE_r)) +
+p_cate_inc_rlearn <- ggplot(pension, aes(x = inc, y = CATE_r)) +
   geom_point(alpha = 0.2) +
   geom_smooth() +
   labs(title = "Treatment effect vs income")
-```
-```{r, echo = FALSE, cache=TRUE}
-set.seed(4321)
-hist(rowSums(Yx_hat, na.rm = TRUE)/(K-1), main = "Expected responses", xlab = "E[Y]")
-hist(rowSums(A_hat, na.rm = TRUE)/(K-1), main = "Propensity scores", xlab = "Propensity-score")
-```
 
-```{r, echo = FALSE, include=FALSE, cache=TRUE}
-set.seed(4321)
-# Q4 Testen for extreme Propensity scores
+# was: two hist() calls
 A_hat_vector <- rowSums(A_hat, na.rm = TRUE)/(K-1)
-mean(A_hat_vector < 0.01 | A_hat_vector > 0.99)
-mean(A_hat_vector < 0.05 | A_hat_vector > 0.95)
+
+p_exp_response <- ggplot(data.frame(x = rowSums(Yx_hat, na.rm = TRUE)/(K-1)), aes(x)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Expected responses", x = "E[Y]")
+
+p_prop_rlearn <- ggplot(data.frame(x = A_hat_vector), aes(x)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Propensity scores", x = "Propensity-score")
+
+(p_cate_rlearn | p_cate_inc_rlearn) /
+(p_exp_response | p_prop_rlearn)
 ```
