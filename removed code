@@ -1,0 +1,72 @@
+Part 2:
+changed by a table:
+cat("ATE estimates by predicted CATE quartile:\n\n")
+
+cat("Q1 (lowest predicted CATE): ",
+    round(coef_1, 2),
+    " [", round(Low_CI_1, 2), ", ", round(High_CI_1, 2), "]\n", sep = "")
+
+cat("Q2: ",
+    round(coef_2, 2),
+    " [", round(Low_CI_2, 2), ", ", round(High_CI_2, 2), "]\n", sep = "")
+
+cat("Q3: ",
+    round(coef_3, 2),
+    " [", round(Low_CI_3, 2), ", ", round(High_CI_3, 2), "]\n", sep = "")
+
+cat("Q4 (highest predicted CATE): ",
+    round(coef_4, 2),
+    " [", round(Low_CI_4, 2), ", ", round(High_CI_4, 2), "]\n", sep = "")
+
+
+
+
+Part 3:
+```{r, echo = FALSE, cache=TRUE}
+# Propensity against covariates
+p_hat <- A_hat
+par(mfrow = c(1, 2))
+plot(X$inc, p_hat, pch = 16, cex = 0.3, col = rgb(0,0,0,0.3),
+     xlab = "Income", ylab = expression(hat(e)(L)),
+     main = "Propensity vs income")
+abline(h = c(0.05, 0.95), col = "red", lty = 2)
+
+plot(X$age, p_hat, pch = 16, cex = 0.3, col = rgb(0,0,0,0.3),
+     xlab = "Age", ylab = expression(hat(e)(L)),
+     main = "Propensity vs age")
+abline(h = c(0.05, 0.95), col = "red", lty = 2)
+par(mfrow = c(1, 1))
+
+p_hat_trunc <- pmax(0.05, pmin(0.95, p_hat))
+
+plot_df <- as.data.frame(X)
+plot_df$p_hat_raw   <- p_hat
+plot_df$p_hat_trunc <- p_hat_trunc
+
+plot_long <- plot_df %>%
+  pivot_longer(cols = -c(p_hat_raw, p_hat_trunc),
+               names_to = "covariate", values_to = "value")
+
+ggplot(plot_long, aes(x = value, y = p_hat_raw)) +
+  geom_point(alpha = 0.1, size = 0.3) +
+  geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
+  facet_wrap(~ covariate, scales = "free_x") +
+  labs(title = "Raw propensity vs all covariates",
+       y = expression(hat(e)(L)), x = "Covariate value")
+
+
+ggplot(plot_long, aes(x = value, y = p_hat_trunc)) +
+  geom_point(alpha = 0.1, size = 0.3) +
+  geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
+  facet_wrap(~ covariate, scales = "free_x") +
+  labs(title = "Truncated propensity vs all covariates",
+       y = expression(hat(e)(L)), x = "Covariate value")
+
+
+ggplot(plot_df, aes(x = inc, y = p_hat_raw)) +
+  geom_point(alpha = 0.1, size = 0.3) +
+  geom_hline(yintercept = c(0.05, 0.95), col = "red", lty = 2) +
+  labs(title = "Propensity vs income (raw vs truncated)",
+       y = expression(hat(e)(L)), x = "Income") +
+  geom_point(aes(y = p_hat_trunc), alpha = 0.1, size = 0.3, col = "blue")
+```
