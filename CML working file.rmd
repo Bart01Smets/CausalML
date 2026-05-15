@@ -367,7 +367,7 @@ This also suggests meaningful treatment effect heterogeneity. While adjacent qua
 Overall, this implies that 401(k) eligibility increases net financial assets for all groups, but the estimated gains are substantially larger for the subgroup with the highest predicted treatment effects and there is thus proof of treatment effect heterogeneity. This is because individuals in the highest quartile likely have a higher income, meaning that they can benefit more from becoming eligible than individuals with a lower income.
 
 # 3) Investigating heterogeneity using the Efficient Influence Function
-The Efficient Influence Function (EIF) was used to construct a debiased estimator for assessing treatment effect heterogeneity.
+In this exercise, we compute the variance derived from the Efficient Influence Function (EIF). This gives a debiased estimator of treatment effect heterogeneity, which adds a correction term to account for the fact that the nuisance functions are estimated.
 
 ```{r, echo = FALSE, cache=TRUE, results = FALSE, warning=FALSE}
 set.seed(4321)
@@ -376,20 +376,15 @@ set.seed(4321)
 ## CATE predictions (E(Y1-Y0)/L)
 CATEhat<-pension$CATE
 
-## prop score (P(A=1/L))
-propscore <- A_hat # propensity scores are already truncated in 1a)
+## Prop score (P(A=1/L))
+propscore <- A_hat 
 
-# zonder cross-fitting: prop_score<-causal_forest$W.hat
-
-## E(Y/L)
-var <- Y_X_hat
-# zonder cross-fitting: var<-causal_forest$Y.hat
-
-#Get actual average treatment effect (E(Y1-Y0))
+# Get actual average treatment effect (E(Y1-Y0))
 atehat<-average_treatment_effect(causal_forest)["estimate"]
-#Get actual average treatment effect (E(Y1-Y0))
-atehat <- as.numeric(average_treatment_effect(causal_forest)["estimate"])
+
 ## E(Y/A,L)
+
+Y_AX_hat
 
 # Fill in the formula for the EIF
 
@@ -449,7 +444,7 @@ IF_report_table <- IF_drivers %>%
     `Mean net financial assets` = mean(net_tfa, na.rm = TRUE),
     `Mean |residual|` = mean(abs_residual, na.rm = TRUE),
     `Mean |CATE - ATE|` = mean(abs_CATE_dev, na.rm = TRUE),
-    `Mean |IPW contrast|` = mean(abs_IPW, na.rm = TRUE),
+    `Mean |IPW|` = mean(abs_IPW, na.rm = TRUE),
     `Propensity range` = paste0(
       round(min(propensity, na.rm = TRUE), 2),
       "–",
@@ -467,24 +462,24 @@ knitr::kable(
 
 ```
 
-Here, we estimate the variance based on the efficient influence function. The key property that we use is that the expectation of this efficient influence function is equal to 0. Therefore, by taking expectations and isolating the variance, we write the variance of quantities that were already estimated. This includes the estimated CATE, estimated ATE, the propensity score and outcome regression. We then plug these estimates into the formula to calculate \hat{\sigma}^2. We can then also compute the efficient influence function values, which we can use to calculate the standard error and corresponding 95% confidence interval.The full derivation is described more formally and in detail in the appendix.
+The key property that we use, to compute this variance, is that the expectation of the efficient influence function is equal to 0. Therefore, by taking expectations and isolating the variance, we write the variance in terms of quantities that were already estimated. This includes the estimated CATE, estimated ATE, the propensity score and outcome residuals. We then plug these estimates into the formula to calculate \hat{\sigma}^2. We can then also compute the efficient influence function values, which we can use to calculate the standard error and corresponding 95% confidence interval.The full derivation is described more formally and in detail in the appendix.
 
-Our estimate for the variance is approximately \(\hat{\sigma}^2 = `r formatC(sigma_sq_hat, format = "e", digits = 2)`\), (SE = `r formatC(sigma_sq_se, format = "e", digits = 2)`), with a 95% confidence interval of [`r formatC(low_ci, format = "e", digits = 2). As \(\sigma^2\) denotes the variance, this obviously cannot be negative in reality. However, as we use the debiased estimator, it can be shown that estimates are not constrained to be positive. To see this, consider that the first term of the EIF should always be positive (as it is squared), however if the correction term is larger than the first term, then the found estimate can be negative. 
+Our estimate for the variance is approximately \(\hat{\sigma}^2 = `r formatC(sigma_sq_hat, format = "e", digits = 2)`\), (SE = `r formatC(sigma_sq_se, format = "e", digits = 2)`), with a 95% confidence interval of [`r formatC(low_ci, format = "e", digits = 2). As \(\sigma^2\) denotes the variance, the true parameter cannot be negative in practice. However, as we use the debiased estimator, it can be shown that estimates are not constrained to be positive. To see this, consider that the squared term of the EIF is always positive (as it is squared), however the correction term can be negative. If this is the case, the resulting variance is negative.
 
-A variance estimate of 0 would indicate a homogenous treatment effect, while an estimate different from 0 indicates a heterogenous treatment effect. Our estimate of the variance is thus positive, which would normally be indicative of a heterogenous treatment effect. However, we can also see that there are very large confidence intervals, which include 0. As this is the case, this implies that we cannot reject the null hypothesis of a homogenous treatment effect, which means we cannot conclude that there is significant heterogeneity in the impact of being eligible for 401(k) schemes on net financial assets for different households.
+A variance estimate of 0 would indicate a homogenous treatment effect, while an estimate different from 0 indicates a heterogenous treatment effect. Our estimate of the variance is positive, which suggests a heterogenous treatment effect. However, we can also see that there are very large confidence intervals, which include 0. As this is the case, this implies that we cannot reject the null hypothesis of a homogenous treatment effect, which means we cannot conclude that there is significant treatment effect heterogeneity.
 
 Because the confidence intervals are rather large; (\(\hat{\sigma}^2 = `r round(sigma_sq_hat, 2)`\), 95% CI 
-[`r round(low_ci, 2)`, `r round(high_ci, 2)`]), we also inspect what drives this value. For this purpose, we inspect whether this result is caused by a few observations with extreme EIF values, which we define as values in the top percent of efficient influence function values. We find that the largest EIF value equals 
+[`r round(low_ci, 2)`, `r round(high_ci, 2)`]), we also inspect what drives this. For this purpose, we inspect whether this result is caused by a few observations with extreme EIF values. We find that the largest EIF value equals 
 `r round(max(abs(IF_sigma), na.rm = TRUE), 2)`, while the 99th percentile equals 
-`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2), which we consider as extreme.
+`r round(quantile(abs(IF_sigma), 0.99, na.rm = TRUE), 2). Thus, we have extreme influence function values, which lead to very large confidence intervals
 
 These extreme EIF values can originate from three 'sources', as can be derived from the formula. First, they may come from large deviations of the estimated CATE from the ATE. Second, they can come from extreme propensity scores. Third, they can result from large outcome residuals. Hence, we compare these for the top 1% vs top 99% of the population.
 
-As shown in Table X, the extreme EIF values are the result of large residuals. The mean absolute residual among the top 1% most influential observations is 
+As shown in Table X, the extreme EIF values are the result of both large residuals and CATE-ATE deviations. The mean absolute residual among the top 1% most influential observations is 
 `r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
 `r round(IF_report_table$`Mean |residual|`[IF_report_table$group == "Remaining 99%"], 2)` for the rest of the sample. These extreme values for these observations are the result of higher net financial assets on average: 
 `r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Top 1% |IF|"], 2)`, compared with 
-`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. On the other hand, the CATE-ATE deviations are also large, (dit moet nog beter) The propensity scores among these extreme EIF values are rather normal.
+`r round(IF_report_table$`Mean net financial assets`[IF_report_table$group == "Remaining 99%"], 2)`. This indicates that several high-asset households have observed outcomes that are substantially larger than predicted by the outcome model. The CATE-ATE deviations are also larger for these influential observations, indicating that they have more extreme predicted treatment effects, and thus also contribute strongly to the extreme EIF values. The inverse probability weights among these extreme EIF values are not very large, indicating that extreme values are not driven by unstable probability weights.
 
 # 4) Estimation of the causal effect using a orthogonal R-learner
 The causal forests that were used in the previous phases have the drawback that they learn the causal effect conditional on many variables, making it both difficult to learn with good accuracy and difficult to visualize. In this fourth phase, we therefore estimate the average effect of eligibility for enrollment in a 401(k) plan on net financial assets conditional only on income. For this purpose, an orthogonal R-learner is used, controlling for the same set of covariates as before to ensure valid confounding adjustment. While both DR learner and the R-learner both are theoretically sound to use in this case, it was ultimately decided to implement the R-learner. The R-Learner was chosen because it is more robust to the local overlap failures visible in the propensity score plot. Where p̂ is extreme, the DR-Learner amplifies errors through IPW division and requires explicit clipping, introducing bias. The R-Learner instead naturally downweights those observations via W_R = (Aᵢ − Âᵢ)², requiring no clipping at all.
