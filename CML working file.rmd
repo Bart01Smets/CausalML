@@ -3,8 +3,10 @@ title: "Causal Machine Learning assignment"
 author: "Thomas Sertijn, Bart Smets, Ilja Van Bever"
 date: "`r Sys.Date()`"
 output: 
-  pdf_document:
+  bookdown::pdf_document2:
     latex_engine: xelatex
+    number_sections: false
+    toc: false
 header-includes:
   - \usepackage{tikz}
 ---
@@ -21,6 +23,7 @@ library(knitr)
 data(pension)
 library(ggdag)
 library(ggplot2)
+library(kableExtra)
 ```
 
 ```{r, echo = FALSE, cache=TRUE}
@@ -120,11 +123,11 @@ In the first phase causal forests were used to estimate the effect of eligibilit
 
 The causal forest analysis reveals a causal effect of eligibility for enrollment in a 401(k) plan on accumulated net financial assets. The estimated Average Treatment Effect (ATE) equals `r round(ate[1], 3)`, indicating that individuals who are eligible for a 401(k) plan accumulate, on average, approximately \$`r round(ate[1], 3)` more in net financial assets than non-eligible individuals. The estimated standard error is \$`r round(ate[1], 3)`, resulting in a 95% confidence interval of [\$`r round(ate[1] - 1.96 * ate[2], 3)`, \$`r round(ate[1] + 1.96 * ate[2], 3)`]. Because the confidence interval is positive and larger than 0, we conclude that being eligible for the 401(k) has a significant and positive effect on the net financial assets of a person.
 
-In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals with different covariate profiles. Figure \@ref(fig:fig-cate-hist) presents a histogram of the predicted CATE values. Most individuals have positive CATE values, although negative values are also observed. Thus, this suggests that for most covariate profiles, the treatment effect was expected to be positive, yet not for all profiles. Furthermore, the estimated CATE was plotted against income (Figure \@ref(fig:fig-cate-unc)), revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but more strongly so for richer individuals.
+In addition to the average treatment effect, the Conditional Average Treatment Effect (CATE) was examined to investigate heterogeneity in treatment effects across individuals with different covariate profiles. Figure \@ref(fig:comboplot-Q1) presents a histogram of the predicted CATE values. Most individuals have positive CATE values, although negative values are also observed. Thus, this suggests that for most covariate profiles, the treatment effect was expected to be positive, yet not for all profiles. Furthermore, the estimated CATE was plotted against income (Figure \@ref(fig:comboplot-Q1)), revealing a clear upward trend: the effect of 401(k) eligibility appears to increase with income. Thus, becoming eligible does have a positive impact on financial assets, but more strongly so for richer individuals.
 
-To better characterize this relationship, both a linear regression model and a smoothing spline regression (with $\lambda$ = 1) were fitted. The corresponding trends are displayed in Figures \@ref(fig:fig-cate-inc-smooth) and \@ref(fig:fig-cate-inc-lm). While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
+To better characterize this relationship, both a linear regression model and a smoothing spline regression (with $\lambda$ = 1) were fitted. The corresponding trends are displayed in Figures \@ref(fig:comboplot-Q1) and \@ref(fig:comboplot-Q1). While the estimated curves differ somewhat at higher income levels, this part of the income distribution contains relatively few observations, implying considerably greater uncertainty in this region.
 
-To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram (Figure \@ref(fig:fig-A-hist)). `r round(mean(A_hat < 0.01 | A_hat > 0.99), 2)`% of the scores were smaller than 0.01 or larger than 0.99, and only `r round(mean(A_hat < 0.05 | A_hat > 0.95), 2)`% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes, so truncation of propensity scores is not needed.
+To assess the stability of the inverse probability weights, the distribution of the estimated propensity scores was also investigated using a histogram (Figure \@ref(fig:comboplot-Q1)). `r round(mean(A_hat < 0.01 | A_hat > 0.99), 2)`% of the scores were smaller than 0.01 or larger than 0.99, and only `r round(mean(A_hat < 0.05 | A_hat > 0.95), 2)`% of the scores were smaller than 0.05 or larger than 0.95. Overall, the propensity scores do not exhibit problematic extremes, so truncation of propensity scores is not needed.
 
 To estimate the propensity scores and outcomes, 5-fold cross-fitting was applied. The modeling was performed using Regression Forests, as described in the documentation of the GRF package (https://grf-labs.github.io/grf/reference/causal_forest.html).
 
@@ -216,88 +219,38 @@ Including variables in an analysis can have different effects depending on their
 - *Variable Affecting Only the Outcome*  
   If a variable only affects the outcome and not eligibility, it can be included in the analysis.  
   Including such variables may improve the efficiency of the estimation.
-  
-% --- COLLIDER ---
-\begin{center}
-\textbf{Collider} \\
-\vspace{0.5cm}
-\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
+\newpage
 
-    % Conditioned variable
-    \node[draw, rounded corners, inner sep=4pt] (L) at (3,4) {Income (L)};
+\begin{figure}
+\centering
+\begin{tikzpicture}[>=stealth, thick]
+    % Nodes
+    \node[draw, rounded corners, inner sep=4pt] (L) at (3,6)   {Income (L)};
+    \node (C) at (3,4)   {Common Cause: Age (C)};
+    \node (A) at (0,2)   {Eligibility (A)};
+    \node (M) at (3,2)   {Mediator: / (M)};
+    \node (Y) at (6,2)   {Outcome (Y)};
+    \node (Z) at (3,0)   {Collider: IRA (Z)};
 
-    % Main variables
-    \node (A) at (0,2) {Eligibility (A)};
-    \node (Y) at (6,2) {Outcome (Y)};
-    \node (Z) at (3,0) {Collider (Z)};
-
-    % Conditioning on income
+    % Income affects A and Y
     \draw[->] (L) -- (A);
     \draw[->] (L) -- (Y);
 
-    % Collider structure
-    \draw[->] (A) -- (Y);
-    \draw[->] (A) -- (Z);
-    \draw[->] (Y) -- (Z);
-
-\end{tikzpicture}
-\end{center}
-
-
-% --- MEDIATOR ---
-\begin{center}
-\textbf{Mediator} \\
-\vspace{0.5cm}
-\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
-
-    % Conditioned variable
-    \node[draw, rounded corners, inner sep=4pt] (L) at (3,4) {Income (L)};
-
-    % Main variables
-    \node (A) at (0,2) {Eligibility (A)};
-    \node (M) at (3,2) {Mediator (M)};
-    \node (Y) at (6,2) {Outcome (Y)};
-
-    % Conditioning on income
-    \draw[->] (L) -- (A);
-    \draw[->] (L) -- (Y);
+    % Common cause affects A and Y
+    \draw[->] (C) -- (A);
+    \draw[->] (C) -- (Y);
 
     % Mediator structure
     \draw[->] (A) -- (M);
     \draw[->] (M) -- (Y);
     \draw[->, bend right=30] (A) to (Y);  % direct effect
 
+    % Collider
+    \draw[->] (A) -- (Z);
+    \draw[->] (Y) -- (Z);
 \end{tikzpicture}
-\end{center}
-
-
-% --- COMMON CAUSE ---
-\begin{center}
-\textbf{Common Cause} \\
-\vspace{0.5cm}
-\begin{tikzpicture}[>=stealth, node distance=2cm, thick]
-
-    % Conditioned variable
-    \node[draw, rounded corners, inner sep=4pt] (L) at (3,4.5) {Income (L)};
-
-    % Main variables
-    \node (A) at (0,1.5) {Eligibility (A)};
-    \node (Y) at (6,1.5) {Outcome (Y)};
-    \node (C) at (3,3) {Common Cause (C)};
-
-    % Conditioning on income
-    \draw[->] (L) -- (A);
-    \draw[->] (L) -- (Y);
-
-    % Additional common cause structure
-    \draw[->] (C) -- (A);
-    \draw[->] (C) -- (Y);
-
-    % Causal effect of interest
-    \draw[->] (A) -- (Y);
-
-\end{tikzpicture}
-\end{center}
+\caption{Combined DAG showing collider, mediator, and common cause structures}
+\end{figure}
 
 # 2) Investigating heterogeneity based on subgroup analysis
 Based on the CATE predictions obtained from the causal forest, the data were split into four subgroups sorted on predicted treatment effects. This allows us to assess if the effect differs across individuals who were predicted to benefit more or less from eligibility.
@@ -353,7 +306,12 @@ quartile_results <- data.frame(
   CI_low = c(Low_CI_1, Low_CI_2, Low_CI_3, Low_CI_4),
   CI_high = c(High_CI_1, High_CI_2, High_CI_3, High_CI_4)
 )
-quartile_results
+knitr::kable(
+  quartile_results,
+  digits = 2,
+  caption = "ATE estimates by predicted CATE quartile"
+) %>%
+  kableExtra::kable_styling(latex_options = "hold_position")
 ```
 
 We find that the estimated treatment effect is positive in all four quartiles. This implies that, on average, 401(k) eligibility has a positive impact on net financial assets for the complete distribution, even for those benefiting the least from the policy. However, this treatment effect differs across subgroups. The estimated ATE increases across the four predicted-CATE quartiles: approximately 
@@ -619,26 +577,16 @@ We estimated the CATE of 401(k) eligibility on net financial assets using an R-L
 The resulting CATEs show a similar pattern to the causal forest: mostly positive values with a right tail of larger effects, though the R-Learner produces a more concentrated distribution. The derived ATE is `r mean(CATE)` (SE: `r se_hat`), consistent across folds, confirming stable calibration. The cross-fold plot shows all five folds intersecting near the mean ATE and following similar linear trends, though high-income observations with large CATEs visibly pull the fit.
 Diagnostically, the predicted outcomes E[Y] are right-skewed, reflecting heterogeneity in outcome potential and possible sensitivity to outliers. Propensity scores are approximately uniform between 0 and 0.8, confirming the overlap assumption holds and that IPW-based estimation remains stable. Together, these diagnostics support the reliability and robustness of the estimated CATEs and ATE.
 
+\newpage
 # Addendum:
 
 ## Q1:
 
-```{r, echo = FALSE, cache=TRUE, results = FALSE, warning=FALSE}
+```{r comboplot-Q1, echo = FALSE, cache=TRUE, results = FALSE, warning=FALSE, fig.cap="Figures related to Question 1"}
 wrap_plots(
   causal_treatinc, causal_lintreatincome, causal_treatinc_uncertain,
   p_cate_hist, p_prop_hist,
   ncol = 2
-)
-```
-
-## Q2:
-table:
-
-```{r, echo = FALSE, cache=TRUE}
-knitr::kable(
-  quartile_results,
-  digits = 2,
-  caption = "ATE estimates by predicted CATE quartile"
 )
 ```
 
